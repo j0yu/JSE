@@ -22,7 +22,7 @@ def run():
     print "JSE created ------------------"
 
   
-def split( parentPane, re_assign_position="" ):
+def split( paneSection, re_assign_position="" ):
     '''
     re_assign_position:   ""   Only for initial creation, creates new default split pane, otherwise...
     
@@ -31,66 +31,110 @@ def split( parentPane, re_assign_position="" ):
                      "right",  horizontal/vertical for configuration flag for c.paneLayout()
                        "top"
     '''
-    # global splitsArray
-    print 'split called with '+parentPane+' and '+re_assign_position
+
+    print 'split called with '+paneSection+' and '+re_assign_position
     if re_assign_position == "":
-        # print len(splitsArray)
-        newPaneLayout = c.paneLayout(configuration='vertical2',parent=parentPane)
-        # print len(splitsArray)
-        # JSE_output_ctrl = c.cmdScrollFieldReporter()
-        # JSE_input_ctrl  = c.cmdScrollFieldExecuter()
-        
+        '''
+            If just initialising    --- Create new vertical 2 pane layout
+                                    --- Create output and input pane and assign 
+                                        it to the new pane layout
+                                    --- Return the pane layout so formLayout can
+                                        snap it to the window's edges
+        '''
+        newPaneLayout = c.paneLayout(configuration='vertical2',parent=paneSection)        
         c.paneLayout(newPaneLayout, edit=True, 
                      setPane=[ (createOutput( newPaneLayout ) , 1),
                                (createInput(  newPaneLayout ) , 2) ] )
         return newPaneLayout
-        
-    if re_assign_position == "top":    
-        pass                    
-    if re_assign_position == "bottom": 
-        pass                       
-    if re_assign_position == "left":
-        parentPaneLayout = parentPane
+    else:
+        ''' --- FIRST ---
+            Find the paneLayout above the current control/layout.
+            This is done through assigning and reassigning the parent
+            and child, shuffling up the levels of parents until the 
+            a paneLayout is identified
+            
+            paneSection         :   child right underneath the paneLayout that the
+                                    input/output section belong to
+            parentPaneLayout    :   paneLayout that is the parent of the pane that 
+                                    called the split, initially initialised to paneSection
+                                    in order to start the parent traversal algorithm
+        '''
+        parentPaneLayout = paneSection
         while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
-            print "parentPaneLayout is ------ ",parentPaneLayout
-            parentPane = parentPaneLayout
+            # print "parentPaneLayout is ------ ",parentPaneLayout
+            paneSection = parentPaneLayout
             parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
         
         #---------------------------- DEBUG ------------------------------------
-        print "parent paneLayout is ----- ",parentPaneLayout
-        print "           child is ------ ",parentPane,"---",c.control(parentPane,q=1,ex=1)        
-        import re
-        parentPaneShort = re.split("\|",parentPane)[-1]        
-        print "           (short)  ------ ",parentPaneShort
-        parentPaneLayoutChildArray = c.paneLayout( parentPaneLayout, query=True, ca=True)
-        print "parentPaneLayout children- ",parentPaneLayoutChildArray
-        print "       child index number- ",parentPaneLayoutChildArray.index(parentPaneShort)
+        # print "parent paneLayout is ----- ",parentPaneLayout
+        # print "           child is ------ ",paneSection,"---",c.control(paneSection,q=1,ex=1)        
+        # import re
+        # paneSectionShortName = re.split("\|",paneSection)[-1]        
+        # print "           (short)  ------ ",paneSectionShortName
+        # parentPaneLayoutChildArray = c.paneLayout( parentPaneLayout, query=True, ca=True)
+        # print "parentPaneLayout children- ",parentPaneLayoutChildArray
+        # print "       child index number- ",parentPaneLayoutChildArray.index(paneSectionShortName)
         #---------------------------- END OF DEBUG ------------------------------------
         
-        # print len(splitsArray)        
-        newPaneLayout =  c.paneLayout(configuration='vertical2',parent=parentPaneLayout) 
-        print newPaneLayout, c.paneLayout(newPaneLayout, q=1,ex=1)
+
+        ''' --- SECOND ---
+            Figure out which index of the pane that called split is in.
+            This is done by retrieving the child array, where it's index is in the
+            same order as the pane index, and then finding the index of the element
+            that matches the paneSection's short name (that is, not including the
+            full path)
+            
+            paneSectionShortName        :   name of the control/layout immediately under the
+                                            parentPaneLayout that the split was called from 
+                                            (dis-includes the full object path)
+
+            paneSectionNumber           :   pane index is the index of the child element + 1
+        '''
+        import re
+        paneSectionShortName = re.split("\|",paneSection)[-1] # strip the short name from the full name
+        paneSectionNumber = c.paneLayout( parentPaneLayout, query=True, ca=True).index(paneSectionShortName)+1
+        
+        
+        
+
+        if re_assign_position == "top":    
+            paneConfig = 'horizontal2'
+            newSectionPaneIndex = 1
+            oldSectionPaneIndex = 2
+
+        if re_assign_position == "bottom": 
+            paneConfig = 'horizontal2'
+            newSectionPaneIndex = 2
+            oldSectionPaneIndex = 1
+            
+        if re_assign_position == "left":
+            paneConfig = 'vertical2'
+            newSectionPaneIndex = 1
+            oldSectionPaneIndex = 2
+            
+        if re_assign_position == "right":   
+            paneConfig = 'vertical2'
+            newSectionPaneIndex = 2   
+            oldSectionPaneIndex = 1                                  
+    
+        newPaneLayout =  c.paneLayout(configuration=paneConfig, parent=parentPaneLayout) 
+        # print newPaneLayout, c.paneLayout(newPaneLayout, q=1,ex=1)
         # print len(splitsArray)
         
         # c.paneLayout(splitsArray[-2], edit=True, 
         c.paneLayout(parentPaneLayout, edit=True, 
-                     setPane=[( newPaneLayout, parentPaneLayoutChildArray.index(parentPaneShort)+1 )]  )   
-        print "assigning new split to current pane................."
-        c.control(parentPane, edit=True, parent=newPaneLayout)
+                     setPane=[( newPaneLayout, paneSectionNumber )]  )   
+        # print "assigning new split to current pane................."
+        c.control(paneSection, edit=True, parent=newPaneLayout)
         c.paneLayout(newPaneLayout, edit=True, 
-                     setPane=[ (createOutput( newPaneLayout ) , 1),
-                               (parentPane , 2) ] )  
-
-        
-        pass # vertical2, 1                     
-    if re_assign_position == "right":     
-        pass # vertical2, 2                                             
-    
+                     setPane=[ (createOutput( newPaneLayout ) , newSectionPaneIndex),
+                               (        paneSection           , oldSectionPaneIndex) ] )  
 
 def createMenus( ctrl ):
     print 'called create menu with '+str(ctrl)+'...........'
     c.popupMenu( parent=ctrl )
     c.menuItem(  radialPosition="W", command="JSE.split('"+ctrl+"','left')" )
+    c.menuItem(  radialPosition="E", command="JSE.split('"+ctrl+"','right')" )
 
 def createOutput( parentPanelLayout ):
     output = c.cmdScrollFieldReporter(parent = parentPanelLayout)
