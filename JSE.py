@@ -97,6 +97,16 @@ def split( paneSection, re_assign_position="" ):
         
         
 
+        ''' --- FINALLY ---
+            Setup values for new paneLayout setup and assingment of new/existing panes......
+            ....tbc....
+            
+            paneConfig          :   --
+            newPaneLayout       :   --
+            newSectionPaneIndex :   --
+            oldSectionPaneIndex :   --
+
+        '''
         if re_assign_position == "top":    
             paneConfig = 'horizontal2'
             newSectionPaneIndex = 1
@@ -119,9 +129,6 @@ def split( paneSection, re_assign_position="" ):
     
         newPaneLayout =  c.paneLayout(configuration=paneConfig, parent=parentPaneLayout) 
         # print newPaneLayout, c.paneLayout(newPaneLayout, q=1,ex=1)
-        # print len(splitsArray)
-        
-        # c.paneLayout(splitsArray[-2], edit=True, 
         c.paneLayout(parentPaneLayout, edit=True, 
                      setPane=[( newPaneLayout, paneSectionNumber )]  )   
         # print "assigning new split to current pane................."
@@ -132,9 +139,17 @@ def split( paneSection, re_assign_position="" ):
 
 def createMenus( ctrl ):
     print 'called create menu with '+str(ctrl)+'...........'
-    c.popupMenu( parent=ctrl )
-    c.menuItem(  radialPosition="W", command="JSE.split('"+ctrl+"','left')" )
-    c.menuItem(  radialPosition="E", command="JSE.split('"+ctrl+"','right')" )
+    c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
+    c.menuItem(  label="Right", radialPosition="E", 
+                    command="JSE.split('"+ctrl+"','right')" )
+    c.menuItem(  label="Left", radialPosition="W", 
+                    command="JSE.split('"+ctrl+"','left')" )
+    c.menuItem(  label="Below", radialPosition="S", 
+                    command="JSE.split('"+ctrl+"','bottom')" )
+    c.menuItem(  label="Above", radialPosition="N", 
+                    command="JSE.split('"+ctrl+"','top')" )
+    c.menuItem(  label="Hey you! Choose new section location...", enable=False)
+                    
 
 def createOutput( parentPanelLayout ):
     output = c.cmdScrollFieldReporter(parent = parentPanelLayout)
