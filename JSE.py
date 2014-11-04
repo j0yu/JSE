@@ -134,8 +134,8 @@ def split( paneSection, re_assign_position="" ):
         # print "assigning new split to current pane................."
         c.control(paneSection, edit=True, parent=newPaneLayout)
         c.paneLayout(newPaneLayout, edit=True, 
-                     setPane=[ (createOutput( newPaneLayout ) , newSectionPaneIndex),
-                               (        paneSection           , oldSectionPaneIndex) ] )  
+                     setPane=[ (createInput( newPaneLayout ) , newSectionPaneIndex),
+                               (        paneSection          , oldSectionPaneIndex) ] )  
 
 def createMenus( ctrl ):
     print 'called create menu with '+str(ctrl)+'...........'
