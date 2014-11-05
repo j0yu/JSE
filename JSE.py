@@ -8,16 +8,8 @@ def run():
     print "JSE called ------------------"
     #---- Setup ----
     window = c.window()
-    layout = c.formLayout() 
+    layout = c.paneLayout() 
     newPaneLayout = split(layout)
-    
-    #---- Attach and snap controls to main layout ----
-    c.formLayout(layout, edit=True, 
-                 attachForm=[ ( newPaneLayout, 'top', 0 ),
-                              ( newPaneLayout, 'left', 0 ),
-                              ( newPaneLayout, 'right', 0 ),
-                              ( newPaneLayout, 'bottom', 0 )
-                            ])
     c.showWindow(window)
     print "JSE created ------------------"
 
@@ -136,6 +128,57 @@ def split( paneSection, re_assign_position="" ):
         c.paneLayout(newPaneLayout, edit=True, 
                      setPane=[ (createInput( newPaneLayout ) , newSectionPaneIndex),
                                (        paneSection          , oldSectionPaneIndex) ] )  
+                               
+def deletePane(paneSection):
+	''' --- FIRST ---
+            Find the paneLayout above the current control/layout.
+            This is done through assigning and reassigning the parent
+            and child, shuffling up the levels of parents until the 
+            a paneLayout is identified
+            
+            paneSection         :   child right underneath the paneLayout that the
+                                    input/output section belong to
+            parentPaneLayout    :   paneLayout that is the parent of the pane that 
+                                    called the split, initially initialised to paneSection
+                                    in order to start the parent traversal algorithm
+        '''
+	parentPaneLayout = paneSection
+	while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
+		paneSection = parentPaneLayout
+		parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
+		
+	''' --- SECOND ---
+            Figure out which index of the pane that called split is in.
+            This is done by retrieving the child array, where it's index is in the
+            same order as the pane index, and then finding the index of the element
+            that matches the paneSection's short name (that is, not including the
+            full path)
+            
+            paneSectionShortName        :   name of the control/layout immediately under the
+                                            parentPaneLayout that the split was called from 
+                                            (dis-includes the full object path)
+
+            paneSectionNumber           :   pane index is the index of the child element + 1
+        '''
+	import re
+	paneSectionShortName = re.split("\|",paneSection)[-1] # strip the short name from the full name
+	paneSectionNumber = c.paneLayout( parentPaneLayout, query=True, ca=True).index(paneSectionShortName)+1
+	otherPaneSectionNum = (paneSectionNumber % 2) + 1
+	
+	print "---------------------------------------------"
+	print parentPaneLayout
+	print c.paneLayout( parentPaneLayout, query=True, ca=True)
+	print paneSectionNumber
+	print otherPaneSectionNum
+	print "---------------------------------------------"
+	
+	'''
+	1	Find Parent 
+	2	Get other control's number
+	3 ---	Unparent other control
+	4 ---	Reparent it to panel/form layout above that
+	5 ---	delete parentLayout
+	'''
 
 def createMenus( ctrl ):
     print 'called create menu with '+str(ctrl)+'...........'
@@ -149,6 +192,8 @@ def createMenus( ctrl ):
     c.menuItem(  label="Above", radialPosition="N", 
                     command="JSE.split('"+ctrl+"','top')" )
     c.menuItem(  label="Hey you! Choose new section location...", enable=False)
+    c.menuItem(  label="Remove This Pane!", 
+					command="JSE.deletePane('"+ctrl+"')")
                     
 
 def createOutput( parentPanelLayout ):
