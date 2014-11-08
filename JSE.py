@@ -12,15 +12,18 @@ def run():
   
 def split( paneSection, re_assign_position="" ):
     '''
-    re_assign_position:   ""   Only for initial creation, creates new default split pane, otherwise...
+    Procedure to split the current pane into 2 panes, or set up the default
+    script editor panels if this is the first time it is run
     
-                    "bottom",  New pane position for existing pane, which will then be  
-                      "left",  used to figure out the pane number for setPane flag and  
-                     "right",  horizontal/vertical for configuration flag for c.paneLayout()
-                       "top"
+    
+    re_assign_position:       "",  Only for initial creation, creates new default split pane, otherwise...
+                        "bottom",  New pane position for existing pane, which will then be  
+                          "left",  used to figure out the pane number for setPane flag and  
+                         "right",  horizontal/vertical for configuration flag for c.paneLayout()
+                           "top"
     '''
 
-    print 'split called with '+paneSection+' and '+re_assign_position
+    # print 'split called with '+paneSection+' and '+re_assign_position
     if re_assign_position == "":
         '''
             If just initialising    --- Create new vertical 2 pane layout
@@ -86,13 +89,17 @@ def split( paneSection, re_assign_position="" ):
         
 
         ''' --- FINALLY ---
-            Setup values for new paneLayout setup and assingment of new/existing panes......
-            ....tbc....
+            Setup values for new paneLayout setup and assingment of new/existing panes
+            to the newly created paneLayout depending on direction.
             
-            paneConfig          :   --
-            newPaneLayout       :   --
-            newSectionPaneIndex :   --
-            oldSectionPaneIndex :   --
+            paneConfig          :   paneLayout flag value for the configuration flag,
+                                    how the pane layout is split basically
+            newPaneLayout       :   name of the new pane layout created using the 
+                                    specified configuration
+            newSectionPaneIndex :   Pane number for the new section to be created
+                                    in the new paneLayout
+            oldSectionPaneIndex :   Pane number for the previously existing section
+                                    that was "split" in this new paneLayout
 
         '''
         if re_assign_position == "top":    
@@ -127,12 +134,16 @@ def split( paneSection, re_assign_position="" ):
                                
 def deletePane(paneSection):
         '''
+        This procedure removes the pane specified in the parameter, effectively
+        re-merging the other pane in the shared pane layout to the pane layout
+        above it. The following is a rough outline of what happens
+        
         1 --- Find Parent Layout
         2 --- Find other secion's name and number, this will be kept
         3 --- Find grand parent layout
         4 --- Find section number of parent layout under grand parent layout
         5 --- Re-parent other section --> grand parent layout, same section number as parent layout
-        6 --- Delete parent layout
+        6 --- Delete parent layout, which also deletes the current section (parent layout's child)
         '''
         
         ''' --- FIRST ---
@@ -153,23 +164,15 @@ def deletePane(paneSection):
             parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
             
         ''' --- SECOND ---
-                Figure out which index of the pane that called split is in.
-                This is done by retrieving the child array, where it's index is in the
-                same order as the pane index, and then finding the index of the element
-                that matches the paneSection's short name (that is, not including the
-                full path)
-                
-                paneSectionShortName        :   name of the control/layout immediately under the
-                                                parentPaneLayout that the split was called from 
-                                                (dis-includes the full object path)
-
-                paneSectionNumber           :   pane index is the index of the child element + 1
-            '''
-        import re
+                Figure out which indices the various children of the different pane layouts
+                are, as well as the grand parent layout. Can't forget about the grannies
+            
+        '''
         parentPaneLayoutChildren        = c.paneLayout( parentPaneLayout, query=True, childArray=True)
         grandParentPaneLayout           = c.paneLayout( parentPaneLayout, query=True, parent=True)
         grandParentPaneLayoutChildren   = c.paneLayout( grandParentPaneLayout, query=True, childArray=True)
 
+        import re
         paneSectionShortName        = re.split("\|",paneSection)[-1] # strip the short name from the full name
         parentPaneLayoutShortName   = re.split("\|",parentPaneLayout)[-1] # strip the short name from the full name
         
@@ -178,6 +181,10 @@ def deletePane(paneSection):
         otherPaneChildNum           = ( parentPaneLayoutChildren.index(paneSectionShortName)+1 ) % 2
         otherParentPaneSectionNum   = (parentPaneLayoutSectionNumber % 2) + 1
 
+        ''' --- FINALLY ---
+                Re-parenting and assigning the control to the grand parent layout
+                and deleting the pane layout that it previously resided under
+        '''
         c.control( parentPaneLayoutChildren[otherPaneChildNum], edit=True, parent=grandParentPaneLayout)
         c.paneLayout( grandParentPaneLayout, edit=True, 
                         setPane=[parentPaneLayoutChildren[otherPaneChildNum], parentPaneLayoutSectionNumber])
