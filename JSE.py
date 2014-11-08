@@ -1,10 +1,6 @@
 import maya.cmds as c
 
-# splitsArray = []
-
 def run():
-    # global splitsArray
-    
     print "JSE called ------------------"
     #---- Setup ----
     window = c.window()
@@ -130,55 +126,62 @@ def split( paneSection, re_assign_position="" ):
                                (        paneSection          , oldSectionPaneIndex) ] )  
                                
 def deletePane(paneSection):
-	''' --- FIRST ---
-            Find the paneLayout above the current control/layout.
-            This is done through assigning and reassigning the parent
-            and child, shuffling up the levels of parents until the 
-            a paneLayout is identified
-            
-            paneSection         :   child right underneath the paneLayout that the
-                                    input/output section belong to
-            parentPaneLayout    :   paneLayout that is the parent of the pane that 
-                                    called the split, initially initialised to paneSection
-                                    in order to start the parent traversal algorithm
         '''
-	parentPaneLayout = paneSection
-	while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
-		paneSection = parentPaneLayout
-		parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
-		
-	''' --- SECOND ---
-            Figure out which index of the pane that called split is in.
-            This is done by retrieving the child array, where it's index is in the
-            same order as the pane index, and then finding the index of the element
-            that matches the paneSection's short name (that is, not including the
-            full path)
+        1 --- Find Parent Layout
+        2 --- Find other secion's name and number, this will be kept
+        3 --- Find grand parent layout
+        4 --- Find section number of parent layout under grand parent layout
+        5 --- Re-parent other section --> grand parent layout, same section number as parent layout
+        6 --- Delete parent layout
+        '''
+        
+        ''' --- FIRST ---
+                Find the paneLayout above the current control/layout.
+                This is done through assigning and reassigning the parent
+                and child, shuffling up the levels of parents until the 
+                a paneLayout is identified
+                
+                paneSection         :   child right underneath the paneLayout that the
+                                        input/output section belong to
+                parentPaneLayout    :   paneLayout that is the parent of the pane that 
+                                        called the split, initially initialised to paneSection
+                                        in order to start the parent traversal algorithm
+            '''
+        parentPaneLayout = paneSection
+        while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
+            paneSection = parentPaneLayout
+            parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
             
-            paneSectionShortName        :   name of the control/layout immediately under the
-                                            parentPaneLayout that the split was called from 
-                                            (dis-includes the full object path)
+        ''' --- SECOND ---
+                Figure out which index of the pane that called split is in.
+                This is done by retrieving the child array, where it's index is in the
+                same order as the pane index, and then finding the index of the element
+                that matches the paneSection's short name (that is, not including the
+                full path)
+                
+                paneSectionShortName        :   name of the control/layout immediately under the
+                                                parentPaneLayout that the split was called from 
+                                                (dis-includes the full object path)
 
-            paneSectionNumber           :   pane index is the index of the child element + 1
-        '''
-	import re
-	paneSectionShortName = re.split("\|",paneSection)[-1] # strip the short name from the full name
-	paneSectionNumber = c.paneLayout( parentPaneLayout, query=True, ca=True).index(paneSectionShortName)+1
-	otherPaneSectionNum = (paneSectionNumber % 2) + 1
-	
-	print "---------------------------------------------"
-	print parentPaneLayout
-	print c.paneLayout( parentPaneLayout, query=True, ca=True)
-	print paneSectionNumber
-	print otherPaneSectionNum
-	print "---------------------------------------------"
-	
-	'''
-	1	Find Parent 
-	2	Get other control's number
-	3 ---	Unparent other control
-	4 ---	Reparent it to panel/form layout above that
-	5 ---	delete parentLayout
-	'''
+                paneSectionNumber           :   pane index is the index of the child element + 1
+            '''
+        import re
+        parentPaneLayoutChildren        = c.paneLayout( parentPaneLayout, query=True, childArray=True)
+        grandParentPaneLayout           = c.paneLayout( parentPaneLayout, query=True, parent=True)
+        grandParentPaneLayoutChildren   = c.paneLayout( grandParentPaneLayout, query=True, childArray=True)
+
+        paneSectionShortName        = re.split("\|",paneSection)[-1] # strip the short name from the full name
+        parentPaneLayoutShortName   = re.split("\|",parentPaneLayout)[-1] # strip the short name from the full name
+        
+        parentPaneLayoutSectionNumber   = grandParentPaneLayoutChildren.index(parentPaneLayoutShortName)+1
+        
+        otherPaneChildNum           = ( parentPaneLayoutChildren.index(paneSectionShortName)+1 ) % 2
+        otherParentPaneSectionNum   = (parentPaneLayoutSectionNumber % 2) + 1
+
+        c.control( parentPaneLayoutChildren[otherPaneChildNum], edit=True, parent=grandParentPaneLayout)
+        c.paneLayout( grandParentPaneLayout, edit=True, 
+                        setPane=[parentPaneLayoutChildren[otherPaneChildNum], parentPaneLayoutSectionNumber])
+        c.deleteUI( parentPaneLayout )
 
 def createMenus( ctrl ):
     print 'called create menu with '+str(ctrl)+'...........'
