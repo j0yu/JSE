@@ -1,12 +1,12 @@
-import maya.cmds as c
+import pymel.core as pm
 
 def run():
     print "JSE called ------------------"
     #---- Setup ----
-    window = c.window()
-    layout = c.paneLayout() 
-    newPaneLayout = split(layout)
-    c.showWindow(window)
+    window = pm.window()
+    layout = pm.paneLayout() 
+    split(layout)
+    pm.showWindow(window)
     print "JSE created ------------------"
 
   
@@ -19,11 +19,11 @@ def split( paneSection, re_assign_position="" ):
     re_assign_position:       "",  Only for initial creation, creates new default split pane, otherwise...
                         "bottom",  New pane position for existing pane, which will then be  
                           "left",  used to figure out the pane number for setPane flag and  
-                         "right",  horizontal/vertical for configuration flag for c.paneLayout()
+                         "right",  horizontal/vertical for configuration flag for pm.paneLayout()
                            "top"
     '''
 
-    # print 'split called with '+paneSection+' and '+re_assign_position
+    print 'split called with '+paneSection+' and '+re_assign_position
     if re_assign_position == "":
         '''
             If just initialising    --- Create new vertical 2 pane layout
@@ -32,12 +32,14 @@ def split( paneSection, re_assign_position="" ):
                                     --- Return the pane layout so formLayout can
                                         snap it to the window's edges
         '''
-        newPaneLayout = c.paneLayout(configuration='vertical2',parent=paneSection)        
-        c.paneLayout(newPaneLayout, edit=True, 
-                     setPane=[ (createOutput( newPaneLayout ) , 1),
-                               (createInput(  newPaneLayout ) , 2) ] )
-        return newPaneLayout
+        newPaneLayout = pm.paneLayout(configuration='vertical2',parent=paneSection)        
+        newPaneLayout.setPane([ (createOutput( newPaneLayout ) , 1),
+                                (createInput(  newPaneLayout ) , 2) ] )
+        # return newPaneLayout
     else:
+        print "\n\n\n"
+        print paneSection
+        print `paneSection`
         ''' --- FIRST ---
             Find the paneLayout above the current control/layout.
             This is done through assigning and reassigning the parent
@@ -51,18 +53,18 @@ def split( paneSection, re_assign_position="" ):
                                     in order to start the parent traversal algorithm
         '''
         parentPaneLayout = paneSection
-        while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
+        while not( pm.paneLayout(parentPaneLayout, exists=True) ):
             # print "parentPaneLayout is ------ ",parentPaneLayout
             paneSection = parentPaneLayout
-            parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
+            parentPaneLayout = parentPaneLayout.parent
         
         #---------------------------- DEBUG ------------------------------------
         # print "parent paneLayout is ----- ",parentPaneLayout
-        # print "           child is ------ ",paneSection,"---",c.control(paneSection,q=1,ex=1)        
+        # print "           child is ------ ",paneSection,"---",pm.control(paneSection,q=1,ex=1)        
         # import re
         # paneSectionShortName = re.split("\|",paneSection)[-1]        
         # print "           (short)  ------ ",paneSectionShortName
-        # parentPaneLayoutChildArray = c.paneLayout( parentPaneLayout, query=True, ca=True)
+        # parentPaneLayoutChildArray = pm.paneLayout( parentPaneLayout, query=True, ca=True)
         # print "parentPaneLayout children- ",parentPaneLayoutChildArray
         # print "       child index number- ",parentPaneLayoutChildArray.index(paneSectionShortName)
         #---------------------------- END OF DEBUG ------------------------------------
@@ -83,7 +85,9 @@ def split( paneSection, re_assign_position="" ):
         '''
         import re
         paneSectionShortName = re.split("\|",paneSection)[-1] # strip the short name from the full name
-        paneSectionNumber = c.paneLayout( parentPaneLayout, query=True, ca=True).index(paneSectionShortName)+1
+        print parentPaneLayout
+        print `parentPaneLayout`
+        paneSectionNumber = parentPaneLayout.getChildArray().index(paneSectionShortName)+1
         
         
         
@@ -122,13 +126,13 @@ def split( paneSection, re_assign_position="" ):
             newSectionPaneIndex = 2   
             oldSectionPaneIndex = 1                                  
     
-        newPaneLayout =  c.paneLayout(configuration=paneConfig, parent=parentPaneLayout) 
-        # print newPaneLayout, c.paneLayout(newPaneLayout, q=1,ex=1)
-        c.paneLayout(parentPaneLayout, edit=True, 
+        newPaneLayout =  pm.paneLayout(configuration=paneConfig, parent=parentPaneLayout) 
+        # print newPaneLayout, pm.paneLayout(newPaneLayout, q=1,ex=1)
+        pm.paneLayout(parentPaneLayout, edit=True, 
                      setPane=[( newPaneLayout, paneSectionNumber )]  )   
         # print "assigning new split to current pane................."
-        c.control(paneSection, edit=True, parent=newPaneLayout)
-        c.paneLayout(newPaneLayout, edit=True, 
+        pm.control(paneSection, edit=True, parent=newPaneLayout)
+        pm.paneLayout(newPaneLayout, edit=True, 
                      setPane=[ (createInput( newPaneLayout ) , newSectionPaneIndex),
                                (        paneSection          , oldSectionPaneIndex) ] )  
                                
@@ -159,18 +163,18 @@ def deletePane(paneSection):
                                         in order to start the parent traversal algorithm
             '''
         parentPaneLayout = paneSection
-        while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
+        while not( pm.paneLayout( parentPaneLayout, query=True, exists=True) ):
             paneSection = parentPaneLayout
-            parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
+            parentPaneLayout = pm.control(parentPaneLayout, query=True, parent=True)
             
         ''' --- SECOND ---
                 Figure out which indices the various children of the different pane layouts
                 are, as well as the grand parent layout. Can't forget about the grannies
             
         '''
-        parentPaneLayoutChildren        = c.paneLayout( parentPaneLayout, query=True, childArray=True)
-        grandParentPaneLayout           = c.paneLayout( parentPaneLayout, query=True, parent=True)
-        grandParentPaneLayoutChildren   = c.paneLayout( grandParentPaneLayout, query=True, childArray=True)
+        parentPaneLayoutChildren        = pm.paneLayout( parentPaneLayout, query=True, childArray=True)
+        grandParentPaneLayout           = pm.paneLayout( parentPaneLayout, query=True, parent=True)
+        grandParentPaneLayoutChildren   = pm.paneLayout( grandParentPaneLayout, query=True, childArray=True)
 
         import re
         paneSectionShortName        = re.split("\|",paneSection)[-1] # strip the short name from the full name
@@ -185,42 +189,44 @@ def deletePane(paneSection):
                 Re-parenting and assigning the control to the grand parent layout
                 and deleting the pane layout that it previously resided under
         '''
-        c.control( parentPaneLayoutChildren[otherPaneChildNum], edit=True, parent=grandParentPaneLayout)
-        c.paneLayout( grandParentPaneLayout, edit=True, 
+        pm.control( parentPaneLayoutChildren[otherPaneChildNum], edit=True, parent=grandParentPaneLayout)
+        pm.paneLayout( grandParentPaneLayout, edit=True, 
                         setPane=[parentPaneLayoutChildren[otherPaneChildNum], parentPaneLayoutSectionNumber])
-        c.deleteUI( parentPaneLayout )
+        pm.deleteUI( parentPaneLayout )
 
 def createMenus( ctrl ):
     print 'called create menu with '+str(ctrl)+'...........'
-    c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
-    c.menuItem(  label="Right", radialPosition="E", 
-                    command="JSE.split('"+ctrl+"','right')" )
-    c.menuItem(  label="Left", radialPosition="W", 
-                    command="JSE.split('"+ctrl+"','left')" )
-    c.menuItem(  label="Below", radialPosition="S", 
-                    command="JSE.split('"+ctrl+"','bottom')" )
-    c.menuItem(  label="Above", radialPosition="N", 
-                    command="JSE.split('"+ctrl+"','top')" )
-    c.menuItem(  label="Hey you! Choose new section location...", enable=False)
-    c.menuItem(  label="Remove This Pane!", 
+    print ctrl
+    print `ctrl`
+    pm.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
+    pm.menuItem(  label="Right", radialPosition="E", 
+                    command=pm.Callback( split , `ctrl`, "right" ) )
+    pm.menuItem(  label="Left", radialPosition="W", 
+                    command="split('"+ctrl+"','left')" )
+    pm.menuItem(  label="Below", radialPosition="S", 
+                    command="split('"+ctrl+"','bottom')" )
+    pm.menuItem(  label="Above", radialPosition="N", 
+                    command="split('"+ctrl+"','top')" )
+    pm.menuItem(  label="Hey you! Choose new section location...", enable=False)
+    pm.menuItem(  label="Remove This Pane!", 
 					command="JSE.deletePane('"+ctrl+"')")
                     
 
 def createOutput( parentPanelLayout ):
-    output = c.cmdScrollFieldReporter(parent = parentPanelLayout)
+    output = pm.cmdScrollFieldReporter(parent = parentPanelLayout)
     createMenus( output )
     print "output created...."
     return output
     
 def createInput( parentUI ):
-    inputLayout = c.formLayout(parent = parentUI)
-    inputTabsLay = c.tabLayout()
+    inputLayout = pm.formLayout(parent = parentUI)
+    inputTabsLay = pm.tabLayout()
     inputTabs = []
-    inputTabs.append( c.cmdScrollFieldExecuter(sourceType="python") )
-    inputTabs.append( c.cmdScrollFieldExecuter(sourceType="mel") )
-    inputCmdLine = c.textField(parent= inputLayout)
+    inputTabs.append( pm.cmdScrollFieldExecuter(sourceType="python") )
+    inputTabs.append( pm.cmdScrollFieldExecuter(sourceType="mel") )
+    inputCmdLine = pm.textField(parent= inputLayout)
     
-    c.formLayout(inputLayout, edit=True,
+    pm.formLayout(inputLayout, edit=True,
                  attachForm=[ (inputTabsLay, "top", 0),    # Snapping the top, left and right edges
                               (inputTabsLay, "left", 0),   # of the tabLayout to the edges of the
                               (inputTabsLay, "right", 0),  # formLayout
@@ -239,3 +245,5 @@ def createInput( parentUI ):
 
 def setPane( paneType ):
     print "wharddupppp"
+
+run()
