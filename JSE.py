@@ -195,7 +195,7 @@ def deletePane(paneSection):
         grandParentPaneLayout           = c.paneLayout( parentPaneLayout, query=True, parent=True)
         grandParentPaneLayoutChildren   = c.paneLayout( grandParentPaneLayout, query=True, childArray=True)
 
-        import re.split
+        import re
         paneSectionShortName        = re.split("\|",paneSection)[-1] # strip the short name from the full name
         parentPaneLayoutShortName   = re.split("\|",parentPaneLayout)[-1] # strip the short name from the full name
         
@@ -210,11 +210,12 @@ def deletePane(paneSection):
         '''
         c.control( parentPaneLayoutChildren[otherPaneChildNum], edit=True, parent=grandParentPaneLayout)
         c.paneLayout( grandParentPaneLayout, edit=True, 
-                        setPane=[parentPaneLayoutChildren[otherPaneChildNum], parentPaneLayoutSectionNumber])
-        c.deleteUI( parentPaneLayout )
+                        setPane=[ parentPaneLayoutChildren[otherPaneChildNum], parentPaneLayoutSectionNumber ])
+        # c.deleteUI( parentPaneLayout ) # Segmentation fault causer in 2014 SP2 Linux
+        
 
 def createMenus( ctrl ):
-    print 'called create menu with '+str(ctrl)+'...........'
+    # print 'called create menu with '+str(ctrl)+'...........'
     c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
     c.menuItem(  label="Right", radialPosition="E", 
                     command="JSE.split('"+ctrl+"','right')" )
@@ -235,13 +236,12 @@ def createOutput( parentPanelLayout ):
     print "output created...."
     return output
 
-def buildInputTab( language , name ):
-    currentInputTabs.append( c.cmdScrollFieldExecuter( sourceType=language ) )
     
 def createInput( parentUI ):
     inputLayout = c.formLayout(parent = parentUI) # formLayout that will hold all the tabs and command line text field
     inputTabsLay = c.tabLayout() # tabLayout that will hold all the input tab buffers
-    '''
+
+
     if c.optionVar(exists="JSE_input_tabLangs"): # Has JSE been used before? (It would have stored this variable)
     # (YES)
         currentInputTabLangs  = c.optionVar(q="JSE_input_tabLangs") # Get list of tabs' languages
@@ -261,12 +261,17 @@ def createInput( parentUI ):
             currentInputTabLabels = []
             
         currentInputTabFiles = []
-    if (currentInputTabLangs == []):
-    '''    
-    buildInputTab( "python" , "py")
-    buildInputTab( "python" , "thon")
-    buildInputTab( "mel" , "mel")
-    buildInputTab( "mel" , "alal")
+    
+    if ( len(currentInputTabLangs) != len(currentInputTabLabels) ):
+        print "your fucked, reality check:\n",\
+              "currentInputTabLangs",currentInputTabLangs,len(currentInputTabLangs),\
+              "currentInputTabLabels",currentInputTabLabels,len(currentInputTabLabels),\
+              "currentInputTabFiles",currentInputTabFiles,len(currentInputTabFiles)
+    else:
+        for i in xrange( len(currentInputTabLabels) ):
+            currentInputTabs.append( c.cmdScrollFieldExecuter( sourceType= currentInputTabLangs[i] ) )
+            # c.tabLayout(inputTabsLay, e=1, tabLabel=[  
+    
     '''
     currentInputTabs.append( c.cmdScrollFieldExecuter(sourceType="python") )
     currentInputTabs.append( c.cmdScrollFieldExecuter(sourceType="mel") )
