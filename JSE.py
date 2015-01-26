@@ -1,12 +1,35 @@
+
+
+
+
 import maya.cmds as c
 
-def run():
+'''
+=== TERMINOLOGY GUIDE ===
+    
+    Input   =   The pane section with the tabs and command line
+    Output  =   The pane section with the output console
+    
+
+'''
+
+currentInputTabLangs = []   # List of tabs' languages
+currentInputTabLabels = []  # List of tabs' label/name
+currentInputTabFiles = []   # List of tabs' associated file location
+currentInputTabs = []       # List of cmdScrollFieldExecuters, will be in order of the tabs (left to right I presume)
+
+def run(dockable):
     print "JSE called ------------------"
     #---- Setup ----
     window = c.window()
     layout = c.paneLayout() 
     newPaneLayout = split(layout)
-    c.showWindow(window)
+    if dockable: 
+     c.dockControl("JSE",area='left',floating=True,content=window)
+     print "Dockable",
+    else: 
+     c.showWindow(window)
+     print "Standard",
     print "JSE created ------------------"
 
   
@@ -172,7 +195,7 @@ def deletePane(paneSection):
         grandParentPaneLayout           = c.paneLayout( parentPaneLayout, query=True, parent=True)
         grandParentPaneLayoutChildren   = c.paneLayout( grandParentPaneLayout, query=True, childArray=True)
 
-        import re
+        import re.split
         paneSectionShortName        = re.split("\|",paneSection)[-1] # strip the short name from the full name
         parentPaneLayoutShortName   = re.split("\|",parentPaneLayout)[-1] # strip the short name from the full name
         
@@ -203,7 +226,7 @@ def createMenus( ctrl ):
                     command="JSE.split('"+ctrl+"','top')" )
     c.menuItem(  label="Hey you! Choose new section location...", enable=False)
     c.menuItem(  label="Remove This Pane!", 
-					command="JSE.deletePane('"+ctrl+"')")
+                    command="JSE.deletePane('"+ctrl+"')")
                     
 
 def createOutput( parentPanelLayout ):
@@ -211,14 +234,45 @@ def createOutput( parentPanelLayout ):
     createMenus( output )
     print "output created...."
     return output
+
+def buildInputTab( language , name ):
+    currentInputTabs.append( c.cmdScrollFieldExecuter( sourceType=language ) )
     
 def createInput( parentUI ):
-    inputLayout = c.formLayout(parent = parentUI)
-    inputTabsLay = c.tabLayout()
-    inputTabs = []
-    inputTabs.append( c.cmdScrollFieldExecuter(sourceType="python") )
-    inputTabs.append( c.cmdScrollFieldExecuter(sourceType="mel") )
-    inputCmdLine = c.textField(parent= inputLayout)
+    inputLayout = c.formLayout(parent = parentUI) # formLayout that will hold all the tabs and command line text field
+    inputTabsLay = c.tabLayout() # tabLayout that will hold all the input tab buffers
+    '''
+    if c.optionVar(exists="JSE_input_tabLangs"): # Has JSE been used before? (It would have stored this variable)
+    # (YES)
+        currentInputTabLangs  = c.optionVar(q="JSE_input_tabLangs") # Get list of tabs' languages
+        currentInputTabLabels = c.optionVar(q="JSE_input_tabLabels")# Get list of tabs' label/names
+        currentInputTabFiles  = c.optionVar(q="JSE_input_tabFiles") # Get list of tabs' associated file addressess
+    else: # (NO)
+        from maya.mel import eval as melEval
+        if melEval("$workaroundToGetVariables = $gCommandExecuterType"): # What about Maya's own script editor, was it used?
+            # (YES) Retrieve existing tabs' languages from the latest Maya script editor state
+            
+            # Here we use a workaround to get a variable from MEL (http://help.autodesk.com/cloudhelp/2015/ENU/Maya-Tech-Docs/CommandsPython/eval.html, example section)
+            currentInputTabLangs  = melEval("$workaroundToGetVariables = $gCommandExecuterType")
+            currentInputTabLabels = melEval("$workaroundToGetVariables = $gCommandExecuterName")
+        else: # (NO)
+            print "===Maya's own script editor, wasn't used!! NUTS!==="
+            currentInputTabLangs  = []
+            currentInputTabLabels = []
+            
+        currentInputTabFiles = []
+    if (currentInputTabLangs == []):
+    '''    
+    buildInputTab( "python" , "py")
+    buildInputTab( "python" , "thon")
+    buildInputTab( "mel" , "mel")
+    buildInputTab( "mel" , "alal")
+    '''
+    currentInputTabs.append( c.cmdScrollFieldExecuter(sourceType="python") )
+    currentInputTabs.append( c.cmdScrollFieldExecuter(sourceType="mel") )
+    '''
+    
+    inputCmdLine = c.textField(parent= inputLayout, manage=False)
     
     c.formLayout(inputLayout, edit=True,
                  attachForm=[ (inputTabsLay, "top", 0),    # Snapping the top, left and right edges
@@ -232,10 +286,15 @@ def createInput( parentUI ):
                  attachControl=(inputTabsLay, "bottom", 0, inputCmdLine) )
                  # Snap the bottom of the tabLayout to the top of cmdLine
     
-    for tab in inputTabs:
+    for tab in currentInputTabs:
         createMenus( tab )
     print "input created...."
     return inputLayout
 
+def saveCurrentSettings():
+    for i in currentInputTabLangs: c.optionVar( stringValueAppend=("JSE_input_tabLangs",i) ) 
+    
+    
+    
 def setPane( paneType ):
     print "wharddupppp"
