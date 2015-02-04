@@ -242,6 +242,9 @@ def createInput( parentUI ):
     inputTabsLay = c.tabLayout() # tabLayout that will hold all the input tab buffers
 
 
+    #==========================================================================================================================
+    #= See if previous JSE Tab settings exist, otherwise hijack Maya's current ones
+    #==========================================================================================================================
     if c.optionVar(exists="JSE_input_tabLangs"): # Has JSE been used before? (It would have stored this variable)
     # (YES)
         currentInputTabLangs  = c.optionVar(q="JSE_input_tabLangs") # Get list of tabs' languages
@@ -255,27 +258,38 @@ def createInput( parentUI ):
             # Here we use a workaround to get a variable from MEL (http://help.autodesk.com/cloudhelp/2015/ENU/Maya-Tech-Docs/CommandsPython/eval.html, example section)
             currentInputTabLangs  = melEval("$workaroundToGetVariables = $gCommandExecuterType")
             currentInputTabLabels = melEval("$workaroundToGetVariables = $gCommandExecuterName")
+        
         else: # (NO)
-            print "===Maya's own script editor, wasn't used!! NUTS!==="
-            currentInputTabLangs  = []
-            currentInputTabLabels = []
-            
-        currentInputTabFiles = []
+            print "===Maya's own script editor, wasn't used!! NUTS! THIS SHOULD NOT BE HAPPENING==="
+            print "===Default to standard [MEL, PYTHON] tab==="
+            currentInputTabLangs  = ["mel","python"]
+            currentInputTabLabels = ["mel","python"]
+        
+        # Either way, whether Maya have it or not, it definitely will not have file locations, so we create one
+        currentInputTabFiles = ["",""]
+
+        # Store the settings
+        for i in currentInputTabLangs : c.optionVar(stringValueAppend=["JSE_input_tabLangs" ,i])
+        for i in currentInputTabLabels: c.optionVar(stringValueAppend=["JSE_input_tabLabels",i])
+        for i in currentInputTabFiles : c.optionVar(stringValueAppend=["JSE_input_tabFiles" ,i])
     
+    #=============================================================
+    #= Create the tabs
+    #=============================================================
     if ( len(currentInputTabLangs) != len(currentInputTabLabels) ):
-        print "your fucked, reality check:\n",\
-              "currentInputTabLangs",currentInputTabLangs,len(currentInputTabLangs),\
-              "currentInputTabLabels",currentInputTabLabels,len(currentInputTabLabels),\
-              "currentInputTabFiles",currentInputTabFiles,len(currentInputTabFiles)
+        print "your fucked, len(currentInputTabLangs) should euqal len(currentInputTabLabels)",\
+              "\n currentInputTabLangs",len(currentInputTabLangs),currentInputTabLangs,\
+              "\n currentInputTabLabels",len(currentInputTabLabels),currentInputTabLabels,\
+              "\n currentInputTabFiles",len(currentInputTabFiles),currentInputTabFiles
     else:
         for i in xrange( len(currentInputTabLabels) ):
             currentInputTabs.append( c.cmdScrollFieldExecuter( sourceType= currentInputTabLangs[i] ) )
             # c.tabLayout(inputTabsLay, e=1, tabLabel=[  
+            c.tabLayout(inputTabsLay, e=1, tabLabel= [ c.tabLayout(inputTabsLay, q=1, childArray=1)[-1] , # Get the name of the newest tab child created
+                                                       currentInputTabLabels[i] ] )                       # and rename that tab with our label
+            
     
-    '''
-    currentInputTabs.append( c.cmdScrollFieldExecuter(sourceType="python") )
-    currentInputTabs.append( c.cmdScrollFieldExecuter(sourceType="mel") )
-    '''
+
     
     inputCmdLine = c.textField(parent= inputLayout, manage=False)
     
@@ -299,7 +313,15 @@ def createInput( parentUI ):
 def saveCurrentSettings():
     for i in currentInputTabLangs: c.optionVar( stringValueAppend=("JSE_input_tabLangs",i) ) 
     
+def wipeOptionVars():
+    for i in c.optionVar(list=True):
+        if i[0:4] == "JSE_": 
+            c.optionVar(remove=i)
+    c.confirmDialog(icon="warning", messageAlign="center",
+                message="JSE optionVars wiped! Reactor core highly unstable...\n\
+                         CLOSE IT DOWN AND GET OUTTA THERE!")
     
-    
+        
+
 def setPane( paneType ):
     print "wharddupppp"
