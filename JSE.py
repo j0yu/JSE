@@ -211,8 +211,84 @@ def deletePane(paneSection):
         c.control( parentPaneLayoutChildren[otherPaneChildNum], edit=True, parent=grandParentPaneLayout)
         c.paneLayout( grandParentPaneLayout, edit=True, 
                         setPane=[ parentPaneLayoutChildren[otherPaneChildNum], parentPaneLayoutSectionNumber ])
+        # c.deleteUI( parentPaneLayout ) # Segmentation fault causer in 2014 SP2 Linux                               
+
+def saveScript(paneSection, saveAs):
+        '''
+        This procedure saves the current active tab's script to a file. If...
+        
+        Current tab has file location |  and saveAs is  | then...
+        ==============================|=================|===========================
+                    Yes               |       Yes       |   Save to new file
+        ------------------------------|-----------------|---------------------------
+                    No                |       Yes       |   Save to new file
+        ------------------------------|-----------------|---------------------------
+                    Yes               |       No        |   Save to file location
+        ------------------------------|-----------------|---------------------------
+                    No                |       No        |   Save to new file
+
+        
+        
+        1 --- Find Parent Layout
+        2 --- Find other secion's name and number, this will be kept
+        3 --- Find grand parent layout
+        4 --- Find section number of parent layout under grand parent layout
+        5 --- Re-parent other section --> grand parent layout, same section number as parent layout
+        6 --- Delete parent layout, which also deletes the current section (parent layout's child)
+        '''
+        
+        print "---------> executer",c.cmdScrollFieldExecuter( paneSection, q=1, ex=1)
+        print "---------> reporter",c.cmdScrollFieldReporter( paneSection, q=1, ex=1)
+        
+        if c.cmdScrollFieldReporter( paneSection, q=1, ex=1):
+            print "line numbering was..",c.cmdScrollFieldReporter( paneSection, q=1, ln=1)
+            c.cmdScrollFieldReporter( paneSection, e=1, ln=0)
+            print "line numbering is...",c.cmdScrollFieldReporter( paneSection, q=1, ln=1)
+        
+        ''' --- FIRST ---
+                Find the paneLayout above the current control/layout.
+                This is done through assigning and reassigning the parent
+                and child, shuffling up the levels of parents until the 
+                a paneLayout is identified
+                
+                paneSection         :   child right underneath the paneLayout that the
+                                        input/output section belong to
+                parentPaneLayout    :   paneLayout that is the parent of the pane that 
+                                        called the split, initially initialised to paneSection
+                                        in order to start the parent traversal algorithm
+        parentPaneLayout = paneSection
+        while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
+            paneSection = parentPaneLayout
+            parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
+        '''
+            
+        ''' --- SECOND ---
+                Figure out which indices the various children of the different pane layouts
+                are, as well as the grand parent layout. Can't forget about the grannies
+            
+        parentPaneLayoutChildren        = c.paneLayout( parentPaneLayout, query=True, childArray=True)
+        grandParentPaneLayout           = c.paneLayout( parentPaneLayout, query=True, parent=True)
+        grandParentPaneLayoutChildren   = c.paneLayout( grandParentPaneLayout, query=True, childArray=True)
+
+        import re
+        paneSectionShortName        = re.split("\|",paneSection)[-1] # strip the short name from the full name
+        parentPaneLayoutShortName   = re.split("\|",parentPaneLayout)[-1] # strip the short name from the full name
+        
+        parentPaneLayoutSectionNumber   = grandParentPaneLayoutChildren.index(parentPaneLayoutShortName)+1
+        
+        otherPaneChildNum           = ( parentPaneLayoutChildren.index(paneSectionShortName)+1 ) % 2
+        otherParentPaneSectionNum   = (parentPaneLayoutSectionNumber % 2) + 1
+        '''
+
+        ''' --- FINALLY ---
+                Re-parenting and assigning the control to the grand parent layout
+                and deleting the pane layout that it previously resided under
+        c.control( parentPaneLayoutChildren[otherPaneChildNum], edit=True, parent=grandParentPaneLayout)
+        c.paneLayout( grandParentPaneLayout, edit=True, 
+                        setPane=[ parentPaneLayoutChildren[otherPaneChildNum], parentPaneLayoutSectionNumber ])
         # c.deleteUI( parentPaneLayout ) # Segmentation fault causer in 2014 SP2 Linux
         
+        '''
 
 def createMenus( ctrl ):
     # print 'called create menu with '+str(ctrl)+'...........'
@@ -228,6 +304,10 @@ def createMenus( ctrl ):
     c.menuItem(  label="Hey you! Choose new section location...", enable=False)
     c.menuItem(  label="Remove This Pane!", 
                     command="JSE.deletePane('"+ctrl+"')")
+    c.menuItem(  label="Save script as...", 
+                    command="JSE.saveScript('"+ctrl+"',True)")
+    c.menuItem(  label="Save script...", 
+                    command="JSE.saveScript('"+ctrl+"',False)")
                     
 
 def createOutput( parentPanelLayout ):
@@ -284,7 +364,6 @@ def createInput( parentUI ):
     else:
         for i in xrange( len(currentInputTabLabels) ):
             currentInputTabs.append( c.cmdScrollFieldExecuter( sourceType= currentInputTabLangs[i] ) )
-            # c.tabLayout(inputTabsLay, e=1, tabLabel=[  
             c.tabLayout(inputTabsLay, e=1, tabLabel= [ c.tabLayout(inputTabsLay, q=1, childArray=1)[-1] , # Get the name of the newest tab child created
                                                        currentInputTabLabels[i] ] )                       # and rename that tab with our label
             
