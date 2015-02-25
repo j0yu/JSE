@@ -757,7 +757,10 @@ def run(dockable):
     print "JSE called ------------------"
 
     #---- Setup ----
-    window = c.window(width=950, height=650)
+    window = ""
+    if engaged: window = c.window(width=950, height=650)
+    else : window = c.window( retain=1,width=950, height=650)
+
     currentInputTabLayouts.append( c.paneLayout() )
     newPaneLayout = split( currentInputTabLayouts[-1] )
 
