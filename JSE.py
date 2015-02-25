@@ -14,10 +14,11 @@ currentInputTabLabels = []  # List of tabs' label/name
 currentInputTabFiles = []   # List of tabs' associated file location
 currentInputTabCode = []    # List of tabs' text buffer/the code inside it
 currentInputTabs = []       # List of cmdScrollFieldExecuters, will be in order of the tabs (left to right I presume)
+currentInputTabLayouts = [] # List of all tab layout in the input pane sections
 
 window = ""                 # The JSE window control
 layout = ""                 # Main layout under the JSE window
-tabLayouts = []             # List of all tab layout in the input pane sections
+engaged = False             # If True, JSE had ran in this instance of Maya
 
 ''' Global Input/Output Settings:
 
@@ -33,8 +34,9 @@ showTooltipHelp
 
 '''
 
+
 def split( paneSection, re_assign_position="" ):
-    '''
+    """
     Procedure to split the current pane into 2 panes, or set up the default
     script editor panels if this is the first time it is run
 
@@ -44,7 +46,7 @@ def split( paneSection, re_assign_position="" ):
                           "left",  used to figure out the pane number for setPane flag and
                          "right",  horizontal/vertical for configuration flag for c.paneLayout()
                            "top"
-    '''
+    """
 
     # print 'split called with '+paneSection+' and '+re_assign_position
     if re_assign_position == "":
@@ -155,6 +157,7 @@ def split( paneSection, re_assign_position="" ):
                      setPane=[ (createInput( newPaneLayout ) , newSectionPaneIndex),
                                (        paneSection          , oldSectionPaneIndex) ] )
 
+
 def deletePane(paneSection):
         '''
         This procedure removes the pane specified in the parameter, effectively
@@ -212,6 +215,7 @@ def deletePane(paneSection):
         c.paneLayout( grandParentPaneLayout, edit=True,
                         setPane=[ parentPaneLayoutChildren[otherPaneChildNum], parentPaneLayoutSectionNumber ])
         # c.deleteUI( parentPaneLayout ) # Segmentation fault causer in 2014 SP2 Linux
+
 
 def saveScript(paneSection, saveAs):
         '''
@@ -290,6 +294,7 @@ def saveScript(paneSection, saveAs):
 
         '''
 
+
 def createPaneMenu( ctrl ):
     # print 'called create menu with '+str(ctrl)+'...........'
     c.popupMenu( parent=ctrl , altModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
@@ -320,8 +325,7 @@ def createPaneMenu( ctrl ):
                     submenu=True )
     '''
 
-
-def createExpressionMenu( ctrl ):
+'''def createExpressionMenu( ctrl ):
     # print 'called create menu with '+str(ctrl)+'...........'
     c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
     c.menuItem(  label="Right", radialPosition="E",
@@ -340,7 +344,7 @@ def createExpressionMenu( ctrl ):
                     command="JSE.saveScript('"+ctrl+"',True)")
     c.menuItem(  label="Save script...",
                     command="JSE.saveScript('"+ctrl+"',False)")
-
+'''
 
 
 def createOutput( parentPanelLayout ):
@@ -354,6 +358,11 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
     '''
         If there is no text then load from file
     '''
+
+    def makeExpressionTab():
+        exprPanelayout = c.paneLayout()
+
+
     if tabUsage == "mel"     : bkgndColour = [0.16, 0.16, 0.16]
     if tabUsage == "expr"    : bkgndColour = [0.16, 0.13, 0.13]
     if tabUsage == "python"  : bkgndColour = [0.12, 0.14, 0.15]
@@ -379,7 +388,7 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
                                                         q=1, childArray=1)[-1] ,# Get the name of the newest tab child created
                                             tabLabel ] )                        # and rename that tab with our label
 
-    createPaneMenu(inputField);
+    createPaneMenu(inputField)
 
     return inputField
 
@@ -427,7 +436,7 @@ def createInput( parentUI ):
             fileExt = ""
             if currentInputTabLangs[i] == "python": fileExt = "py"
             else: fileExt = "mel"
-            currentInputTabFiles.append(currentInputTabLabels[i]+"."+fileExt)
+            currentInputTabFiles.append("JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt)
 
         # Store the settings
         for i in currentInputTabLangs : c.optionVar(stringValueAppend=["JSE_input_tabLangs" ,i])
@@ -440,7 +449,7 @@ def createInput( parentUI ):
     #=============================================================
     #= Create the tabs
     #=============================================================
-    if ( len(currentInputTabLangs) != len(currentInputTabLabels) ):
+    if len(currentInputTabLangs) != len(currentInputTabLabels):
         print "You're fucked, len(currentInputTabLangs) should euqal len(currentInputTabLabels)",\
               "\n currentInputTabLangs",len(currentInputTabLangs),currentInputTabLangs,\
               "\n currentInputTabLabels",len(currentInputTabLabels),currentInputTabLabels,\
@@ -480,10 +489,42 @@ def createInput( parentUI ):
 
     return inputLayout
 
+
+def saveAllTabs():
+    global currentInputTabLangs
+    global currentInputTabLabels
+    global currentInputTabFiles
+
+    for i in currentInputTabs:
+        pass
+
+
 def saveCurrentSettings():
+    global currentInputTabLangs
+    global currentInputTabLabels
+    global currentInputTabFiles
+
     for i in currentInputTabLangs:  c.optionVar( stringValueAppend=("JSE_input_tabLangs",i) )
     for i in currentInputTabLabels: c.optionVar( stringValueAppend=("JSE_input_tabLabels",i) )
     for i in currentInputTabFiles:  c.optionVar( stringValueAppend=("JSE_input_tabFiles",i) )
+
+
+def syncAll():
+    global currentInputTabLangs
+    global currentInputTabLabels
+    global currentInputTabFiles
+    global currentInputTabCode
+    global currentInputTabs
+    global currentInputTabLayouts
+    global window
+    global layout
+
+
+    '''---- To Do ----
+    [ ]
+
+    '''
+
 
 def wipeOptionVars():
     for i in c.optionVar(list=True):
@@ -492,10 +533,11 @@ def wipeOptionVars():
     c.confirmDialog(icon="warning", messageAlign="center",
                 message="JSE optionVars wiped! Reactor core highly unstable...\nCLOSE IT DOWN AND GET OUTTA THERE!")
 
+
 def layoutJSE():
     def recursiveLayoutTraverse(JSELayout, layerNum):
         layoutChildArray = c.layout(JSELayout, q=1, ca=1)
-        if layoutChildArray != []:
+        if layoutChildArray:
             for i in c.layout(JSELayout, q=1, ca=1):
                 for tabs in range(layerNum): print "\t",
                 print i
@@ -564,14 +606,40 @@ def layoutJSE():
 
     '''
 
+
 def setPane( paneType ):
     pass
 
+
+def debugGlobals():
+    global currentInputTabLangs
+    global currentInputTabLabels
+    global currentInputTabFiles
+    global currentInputTabCode
+    global currentInputTabs
+    global currentInputTabLayouts
+    global window
+    global layout
+    global engaged
+
+    print "currentInputTabLangs, size :",len(currentInputTabLangs),"\n",currentInputTabLangs,"\n"
+    print "currentInputTabLabels, size :",len(currentInputTabLabels),"\n",currentInputTabLabels,"\n"
+    print "currentInputTabFiles, size :",len(currentInputTabFiles),"\n",currentInputTabFiles,"\n"
+    print "currentInputTabCode, size :",len(currentInputTabCode),"\n",currentInputTabCode,"\n"
+    print "currentInputTabs, size :",len(currentInputTabs),"\n",currentInputTabs,"\n"
+    print "currentInputTabLayouts, size :",len(currentInputTabLayouts),"\n",currentInputTabLayouts,"\n"
+
+    print "window :\t",window
+    print "layout :\t",layout
+    print "engaged:\t",engaged
+
+##################################################################################################################
 
 
 def run(dockable):
     global window
     global layout
+    global engaged
 
     print "JSE called ------------------"
 
@@ -587,5 +655,7 @@ def run(dockable):
         print "Standard",
     print "JSE created ------------------"
 
-# End of script, now just to run it
+    engaged = True
+
+# End of script, if you want to to run it from just import
 # run(0)
