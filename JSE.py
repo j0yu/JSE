@@ -1,5 +1,5 @@
 import maya.cmds as c
-
+from maya.mel import eval as melEval
 '''
 === TERMINOLOGY GUIDE ===
 
@@ -9,7 +9,7 @@ import maya.cmds as c
 
 '''
 
-currentInputTabLangs = []   # List of tabs' languages
+currentInputTabType = []   # List of tabs' languages
 currentInputTabLabels = []  # List of tabs' label/name
 currentInputTabFiles = []   # List of tabs' associated file location
 currentInputTabCode = []    # List of tabs' text buffer/the code inside it
@@ -360,7 +360,7 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
     '''
 
     def makeExpressionTab():
-        exprPanelayout = c.paneLayout()
+        exprPanelayout = c.paneLayout(configuration='vertical2')
 
 
     if tabUsage == "mel"     : bkgndColour = [0.16, 0.16, 0.16]
@@ -394,7 +394,7 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
 
 
 def createInput( parentUI ):
-    global currentInputTabLangs
+    global currentInputTabType
     global currentInputTabLabels
     global currentInputTabFiles
     global currentInputTabs
@@ -409,17 +409,16 @@ def createInput( parentUI ):
     #==========================================================================================================================
     if c.optionVar(exists="JSE_input_tabLangs"): # Has JSE been used before? (It would have stored this variable)
     # (YES)
-        currentInputTabLangs  = c.optionVar(q="JSE_input_tabLangs") # Get list of tabs' languages
+        currentInputTabType  = c.optionVar(q="JSE_input_tabLangs") # Get list of tabs' languages
         currentInputTabLabels = c.optionVar(q="JSE_input_tabLabels")# Get list of tabs' label/names
         currentInputTabFiles  = c.optionVar(q="JSE_input_tabFiles") # Get list of tabs' associated file addressess
-        for i in currentInputTabLangs:currentInputTabCode.append( "" )
+        for i in currentInputTabType:currentInputTabCode.append( "" )
     else: # (NO)
-        from maya.mel import eval as melEval
         if melEval("$workaroundToGetVariables = $gCommandExecuterType"): # What about Maya's own script editor, was it used?
             # (YES) Retrieve existing tabs' languages from the latest Maya script editor state
 
             # Here we use a workaround to get a variable from MEL (http://help.autodesk.com/cloudhelp/2015/ENU/Maya-Tech-Docs/CommandsPython/eval.html, example section)
-            currentInputTabLangs  = melEval("$workaroundToGetVariables = $gCommandExecuterType")
+            currentInputTabType  = melEval("$workaroundToGetVariables = $gCommandExecuterType")
             currentInputTabLabels = melEval("$workaroundToGetVariables = $gCommandExecuterName")
             for cmdExecuter in melEval("$workaroundToGetVariables = $gCommandExecuter"):
                 currentInputTabCode.append( c.cmdScrollFieldExecuter(cmdExecuter, q=1, t=1) )
@@ -428,18 +427,18 @@ def createInput( parentUI ):
         else: # (NO)
             print "===Maya's own script editor, wasn't used!! NUTS! THIS SHOULD NOT BE HAPPENING==="
             print "===Default to standard [MEL, PYTHON] tab==="
-            currentInputTabLangs  = ["mel","python"]
+            currentInputTabType  = ["mel","python"]
             currentInputTabLabels = ["mel","python"]
 
         # Either way, whether Maya have it or not, it definitely will not have file locations, so we create one
-        for i in range( len(currentInputTabLangs) ):
+        for i in range( len(currentInputTabType) ):
             fileExt = ""
-            if currentInputTabLangs[i] == "python": fileExt = "py"
+            if currentInputTabType[i] == "python": fileExt = "py"
             else: fileExt = "mel"
-            currentInputTabFiles.append("JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt)
+            currentInputTabFiles.append("")
 
         # Store the settings
-        for i in currentInputTabLangs : c.optionVar(stringValueAppend=["JSE_input_tabLangs" ,i])
+        for i in currentInputTabType : c.optionVar(stringValueAppend=["JSE_input_tabLangs" ,i])
         for i in currentInputTabLabels: c.optionVar(stringValueAppend=["JSE_input_tabLabels",i])
         for i in currentInputTabFiles : c.optionVar(stringValueAppend=["JSE_input_tabFiles" ,i])
 
@@ -449,16 +448,16 @@ def createInput( parentUI ):
     #=============================================================
     #= Create the tabs
     #=============================================================
-    if len(currentInputTabLangs) != len(currentInputTabLabels):
-        print "You're fucked, len(currentInputTabLangs) should euqal len(currentInputTabLabels)",\
-              "\n currentInputTabLangs",len(currentInputTabLangs),currentInputTabLangs,\
+    if len(currentInputTabType) != len(currentInputTabLabels):
+        print "You're fucked, len(currentInputTabType) should euqal len(currentInputTabLabels)",\
+              "\n currentInputTabType",len(currentInputTabType),currentInputTabType,\
               "\n currentInputTabLabels",len(currentInputTabLabels),currentInputTabLabels,\
               "\n currentInputTabFiles",len(currentInputTabFiles),currentInputTabFiles
     else:
         print len(currentInputTabLabels), len(currentInputTabCode)
         for i in xrange( len(currentInputTabLabels) ):
             currentInputTabs.append(
-                makeInputTab(   currentInputTabLangs[i],
+                makeInputTab(   currentInputTabType[i],
                                 inputTabsLay,
                                 currentInputTabLabels[i],
                                 currentInputTabCode[i],
@@ -491,26 +490,65 @@ def createInput( parentUI ):
 
 
 def saveAllTabs():
-    global currentInputTabLangs
+    global currentInputTabType
     global currentInputTabLabels
     global currentInputTabFiles
+    global currentInputTabs
 
-    for i in currentInputTabs:
-        pass
+    """
+    First get the path to the scriptEditorTemp by hijacking from icons path
+    as internalVar does not work well (in python anyway)
+    """
+    import re
+    scriptEditorTempPath = ""
+    mayaIconPath = melEval("getenv XBMLANGPATH")
+    for i in re.split(":",mayaIconPath):
+        if re.match("/home/.*/maya/.*/prefs/.*",i):
+            scriptEditorTempPath = re.split("icon",i)[0]+"scriptEditorTemp/"
+            break # Get outta there once you got the path
+
+    """
+    Then delete the existing buffers in the temp location
+    """
+    for i in  c.getFileList( folder=scriptEditorTempPath, filespec='JSE*' ):
+        c.sysFile(scriptEditorTempPath+i,delete=1)
+
+
+    """
+    Finally write the code in the current tabs to files
+    """
+    for i in range( len( currentInputTabType ) ):
+        if currentInputTabType[i] != "expr":
+            fileExt=""
+            if currentInputTabType[i] == "python": fileExt = "py"
+            else: fileExt = "mel"
+            c.cmdScrollFieldExecuter(currentInputTabs[i], e=1,
+                                     storeContents="JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt)
+            """
+            Do the same for actual file paths that the script may be opened from
+            """
+            if currentInputTabFiles[i]:
+                c.sysFile( currentInputTabFiles[i], delete=1)
+                c.cmdScrollFieldExecuter(currentInputTabs[i], e=1,
+                                         storeContents = currentInputTabFiles[i] )
+                print "Saved",currentInputTabFiles[i]
+
+        # make sure the text is not selected
+        c.cmdScrollFieldExecuter(inputField, e=1, select=[0,0] )
 
 
 def saveCurrentSettings():
-    global currentInputTabLangs
+    global currentInputTabType
     global currentInputTabLabels
     global currentInputTabFiles
 
-    for i in currentInputTabLangs:  c.optionVar( stringValueAppend=("JSE_input_tabLangs",i) )
+    for i in currentInputTabType:  c.optionVar( stringValueAppend=("JSE_input_tabLangs",i) )
     for i in currentInputTabLabels: c.optionVar( stringValueAppend=("JSE_input_tabLabels",i) )
     for i in currentInputTabFiles:  c.optionVar( stringValueAppend=("JSE_input_tabFiles",i) )
 
 
 def syncAll():
-    global currentInputTabLangs
+    global currentInputTabType
     global currentInputTabLabels
     global currentInputTabFiles
     global currentInputTabCode
@@ -612,7 +650,7 @@ def setPane( paneType ):
 
 
 def debugGlobals():
-    global currentInputTabLangs
+    global currentInputTabType
     global currentInputTabLabels
     global currentInputTabFiles
     global currentInputTabCode
@@ -622,7 +660,7 @@ def debugGlobals():
     global layout
     global engaged
 
-    print "currentInputTabLangs, size :",len(currentInputTabLangs),"\n",currentInputTabLangs,"\n"
+    print "currentInputTabType, size :",len(currentInputTabType),"\n",currentInputTabType,"\n"
     print "currentInputTabLabels, size :",len(currentInputTabLabels),"\n",currentInputTabLabels,"\n"
     print "currentInputTabFiles, size :",len(currentInputTabFiles),"\n",currentInputTabFiles,"\n"
     print "currentInputTabCode, size :",len(currentInputTabCode),"\n",currentInputTabCode,"\n"
@@ -637,6 +675,7 @@ def debugGlobals():
 
 
 def run(dockable):
+    global currentInputTabLayouts
     global window
     global layout
     global engaged
@@ -645,8 +684,9 @@ def run(dockable):
 
     #---- Setup ----
     window = c.window(width=950, height=650)
-    layout = c.paneLayout()
-    newPaneLayout = split(layout)
+    currentInputTabLayouts.append( c.paneLayout() )
+    newPaneLayout = split( currentInputTabLayouts[-1] )
+
     if dockable:
         c.dockControl("JSE",area='left',floating=True,content=window)
         print "Dockable",
