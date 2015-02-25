@@ -33,7 +33,29 @@ showTooltipHelp
 
 
 '''
+def exprMenuChange():
+    """ ==========Evaluation methods from expressionEdCallbacks.mel==========
+    global proc EEanimatedCB()
+    {
+        global int $EEcreateMode;
+        global int $EEeditedInEditor;
+        global string $EEcurrExpressionName;
 
+        // If in edit mode, reset the expression animated value immediately.
+        //
+        if (!$EEcreateMode)
+        {
+            int $anType = `optionMenu -query -select EEanimTypeOM`;
+            $EEeditedInEditor = 1;
+
+            int $optionVal = $anType - 1; // Since command's option is 0 based
+
+            evalEcho("expression -edit -alwaysEvaluate " + $optionVal + " " + $EEcurrExpressionName);
+        }
+
+    }   // EEanimatedCB
+    """
+    pass
 
 def split( paneSection, re_assign_position="" ):
     """
@@ -47,6 +69,7 @@ def split( paneSection, re_assign_position="" ):
                          "right",  horizontal/vertical for configuration flag for c.paneLayout()
                            "top"
     """
+    global currentInputTabLayouts
 
     # print 'split called with '+paneSection+' and '+re_assign_position
     if re_assign_position == "":
@@ -75,21 +98,21 @@ def split( paneSection, re_assign_position="" ):
                                     called the split, initially initialised to paneSection
                                     in order to start the parent traversal algorithm
         '''
-        parentPaneLayout = paneSection
+        parentPaneLayout = c.control(paneSection, query=True, parent=True)
         while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
-            # print "parentPaneLayout is ------ ",parentPaneLayout
+            print "parentPaneLayout is ------ ",parentPaneLayout
             paneSection = parentPaneLayout
             parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
 
         #---------------------------- DEBUG ------------------------------------
-        # print "parent paneLayout is ----- ",parentPaneLayout
-        # print "           child is ------ ",paneSection,"---",c.control(paneSection,q=1,ex=1)
-        # import re
-        # paneSectionShortName = re.split("\|",paneSection)[-1]
-        # print "           (short)  ------ ",paneSectionShortName
-        # parentPaneLayoutChildArray = c.paneLayout( parentPaneLayout, query=True, ca=True)
-        # print "parentPaneLayout children- ",parentPaneLayoutChildArray
-        # print "       child index number- ",parentPaneLayoutChildArray.index(paneSectionShortName)
+        print "parent paneLayout is ----- ",parentPaneLayout
+        print "           child is ------ ",paneSection,"---",c.control(paneSection,q=1,ex=1)
+        import re
+        paneSectionShortName = re.split("\|",paneSection)[-1]
+        print "           (short)  ------ ",paneSectionShortName
+        parentPaneLayoutChildArray = c.paneLayout( parentPaneLayout, query=True, ca=True)
+        print "parentPaneLayout children- ",parentPaneLayoutChildArray
+        print "       child index number- ",parentPaneLayoutChildArray.index(paneSectionShortName)
         #---------------------------- END OF DEBUG ------------------------------------
 
 
@@ -358,10 +381,7 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
     '''
         If there is no text then load from file
     '''
-
-    def makeExpressionTab():
-        exprPanelayout = c.paneLayout(configuration='vertical2')
-
+    inputField = ""
 
     if tabUsage == "mel"     : bkgndColour = [0.16, 0.16, 0.16]
     if tabUsage == "expr"    : bkgndColour = [0.16, 0.13, 0.13]
@@ -370,25 +390,78 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
     if tabUsage == "python"  : tabLang = "python"
     else                     : tabLang = "mel"
 
-    inputField = c.cmdScrollFieldExecuter(  sourceType= tabLang,
-                                            backgroundColor = bkgndColour,
-                                            parent=pTabLayout,
 
-                                            showLineNumbers=True )
+    if tabUsage == "expr":
+        exprPanelayout = c.paneLayout( parent = pTabLayout, configuration='vertical2')
 
-    if fileLocation != "": c.cmdScrollFieldExecuter(inputField, e=1, loadContents=fileLocation)
-    if text != ""        :
-        c.cmdScrollFieldExecuter(inputField, e=1, text=text)
-        c.cmdScrollFieldExecuter(inputField, e=1, storeContents=fileLocation)
+        #========================================================================================================
+        exprForm = c.formLayout( parent = exprPanelayout)
+        #--------------------------------------------------------
+        angleOption = c.optionMenu( parent = exprForm)
+        option_All = c.menuItem(label="Convert All Units")
+        option_Non = c.menuItem(label="None")
+        option_Ang = c.menuItem(label="Angular only")
+        #--------------------------------------------------------
+        evalOption = c.optionMenu( parent = exprForm)
+        option_Alw = c.menuItem(label="Always Evaluate")
+        option_OnD = c.menuItem(label="On Demand")
+        option_AfC = c.menuItem(label="After Cloth")
+        #--------------------------------------------------------
+        defObject  = c.textField( parent = exprForm, placeholderText="Default Obj. e.g.pCube", w=150 )
+        #--------------------------------------------------------
+        inputField = c.cmdScrollFieldExecuter(  sourceType= "mel",
+                                                backgroundColor = bkgndColour,
+                                                parent=exprForm,
 
-    # make sure the text is not selected
-    c.cmdScrollFieldExecuter(inputField, e=1, select=[0,0] )
+                                                showLineNumbers=True )
+        c.formLayout(exprForm, e=1, attachForm=([angleOption, "top", 0],
+                                                [evalOption,  "top", 0],
+                                                [defObject,   "top", 0],
+                                                [defObject,   "right", 0],
+                                                [inputField,  "bottom", 0],
+                                                [inputField,  "right", 0],
+                                                [inputField,  "left", 0]),
+
+                          attachControl=([inputField, "top", 0, defObject],
+                                         [defObject,  "left", 0, evalOption],
+                                         [evalOption,  "left", 0, angleOption]) )
+
+        #========================================================================================================
+        attrForm = c.formLayout( parent = exprPanelayout)
+        #--------------------------------------------------------
+        objSearchField  = c.textField( parent = attrForm, placeholderText="Search obj for attr", w=120 )
+        attrList   = c.textScrollList( parent = attrForm )
+        c.formLayout(attrForm, e=1, attachForm=([objSearchField, "top", 0],
+                                                [objSearchField, "left", 0],
+                                                [objSearchField, "right", 0],
+                                                [attrList, "left", 0],
+                                                [attrList, "right", 0],
+                                                [attrList,  "bottom", 0]   ),
+                                 attachControl=([attrList, "top", 0, objSearchField]) )
+        createPaneMenu(exprPanelayout)
+
+    else:
+        inputField = c.cmdScrollFieldExecuter(  sourceType= tabLang,
+                                                backgroundColor = bkgndColour,
+                                                parent=pTabLayout,
+
+                                                showLineNumbers=True )
+
+        if fileLocation != "": c.cmdScrollFieldExecuter(inputField, e=1, loadContents=fileLocation)
+        if text != ""        :
+            c.cmdScrollFieldExecuter(inputField, e=1, text=text)
+            c.cmdScrollFieldExecuter(inputField, e=1, storeContents=fileLocation)
+
+        # make sure the text is not selected
+        c.cmdScrollFieldExecuter(inputField, e=1, select=[0,0] )
+
+        createPaneMenu(inputField)
 
     c.tabLayout(pTabLayout, e=1, tabLabel= [c.tabLayout(pTabLayout,
                                                         q=1, childArray=1)[-1] ,# Get the name of the newest tab child created
                                             tabLabel ] )                        # and rename that tab with our label
 
-    createPaneMenu(inputField)
+
 
     return inputField
 
@@ -664,8 +737,9 @@ def debugGlobals():
     print "currentInputTabLabels, size :",len(currentInputTabLabels),"\n",currentInputTabLabels,"\n"
     print "currentInputTabFiles, size :",len(currentInputTabFiles),"\n",currentInputTabFiles,"\n"
     print "currentInputTabCode, size :",len(currentInputTabCode),"\n",currentInputTabCode,"\n"
-    print "currentInputTabs, size :",len(currentInputTabs),"\n",currentInputTabs,"\n"
-    print "currentInputTabLayouts, size :",len(currentInputTabLayouts),"\n",currentInputTabLayouts,"\n"
+    print "currentInputTabs, size :",len(currentInputTabs),"\n"
+    for i in currentInputTabs: print i
+    print "\ncurrentInputTabLayouts, size :",len(currentInputTabLayouts),"\n",currentInputTabLayouts,"\n"
 
     print "window :\t",window
     print "layout :\t",layout
