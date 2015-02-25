@@ -372,6 +372,9 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
         c.cmdScrollFieldExecuter(inputField, e=1, text=text)
         c.cmdScrollFieldExecuter(inputField, e=1, storeContents=fileLocation)
 
+    # make sure the text is not selected
+    c.cmdScrollFieldExecuter(inputField, e=1, select=[0,0] )
+
     c.tabLayout(pTabLayout, e=1, tabLabel= [c.tabLayout(pTabLayout,
                                                         q=1, childArray=1)[-1] ,# Get the name of the newest tab child created
                                             tabLabel ] )                        # and rename that tab with our label
