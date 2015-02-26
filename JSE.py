@@ -1,5 +1,12 @@
 import maya.cmds as c
+import re
 from maya.mel import eval as melEval
+
+import logging
+logger = logging.getLogger("JSE")
+# Logger levels: CRITICAL ERROR WARNING INFO DEBUG NOTSET
+logger.setLevel(logging.CRITICAL)
+
 
 '''
 === TERMINOLOGY GUIDE ===
@@ -15,7 +22,7 @@ currentInputTabLabels = []  # List of tabs' label/name
 currentInputTabFiles = []   # List of tabs' associated file location
 currentInputTabCode = []    # List of tabs' text buffer/the code inside it
 currentInputTabs = []       # List of cmdScrollFieldExecuters, will be in order of the tabs (left to right I presume)
-currentInputTabLayouts = [] # List of all tab layout in the input pane sections
+currentInputTabLayouts = [] # List of all tab layout in the various input pane sections
 
 window = ""                 # The JSE window control
 layout = ""                 # Main layout under the JSE window
@@ -74,8 +81,9 @@ def split( paneSection, re_assign_position="" ):
                            "top"
     """
     global currentInputTabLayouts
-
-    # print 'split called with '+paneSection+' and '+re_assign_position
+    logger.debug(" Splitting --------------------")
+    logger.debug("        paneSection : %s",paneSection)
+    logger.debug(" re_assign_position : %s",re_assign_position)
     if re_assign_position == "":
         '''
             If just initialising    --- Create new vertical 2 pane layout
@@ -85,9 +93,12 @@ def split( paneSection, re_assign_position="" ):
                                         snap it to the window's edges
         '''
         newPaneLayout = c.paneLayout(configuration='vertical2',parent=paneSection)
+        logger.debug("newPaneLayout : %s",newPaneLayout)
         c.paneLayout(newPaneLayout, edit=True,
                      setPane=[ (createOutput( newPaneLayout ) , 1),
                                (createInput(  newPaneLayout ) , 2) ] )
+
+        logger.info("Created default split for intialisation/first run of JSE")
         return newPaneLayout
     else:
         ''' --- FIRST ---
@@ -103,21 +114,23 @@ def split( paneSection, re_assign_position="" ):
                                     in order to start the parent traversal algorithm
         '''
         parentPaneLayout = c.control(paneSection, query=True, parent=True)
+        logger.debug("\n--------Traversing to get parent paneLayout --------")
         while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
-            print "parentPaneLayout is ------ ",parentPaneLayout
             paneSection = parentPaneLayout
+            logger.debug("parentPaneLayout was ----- %s",parentPaneLayout)
+            logger.debug("     paneSection becomes - %s",paneSection)
             parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
+            logger.debug("parentPaneLayout becomes - %s",parentPaneLayout)
 
-        #---------------------------- DEBUG ------------------------------------
-        print "parent paneLayout is ----- ",parentPaneLayout
-        print "           child is ------ ",paneSection,"---",c.control(paneSection,q=1,ex=1)
-        import re
+
+        logger.debug("\n--------------- After traversal debug --------------------")
+        logger.debug("parent paneLayout is ----- %s",parentPaneLayout )
+        logger.debug("           child is ------ %s --- %s",paneSection,c.control(paneSection,q=1,ex=1) )
         paneSectionShortName = re.split("\|",paneSection)[-1]
-        print "           (short)  ------ ",paneSectionShortName
+        logger.debug("           (short)  ------ %s",paneSectionShortName )
         parentPaneLayoutChildArray = c.paneLayout( parentPaneLayout, query=True, ca=True)
-        print "parentPaneLayout children- ",parentPaneLayoutChildArray
-        print "       child index number- ",parentPaneLayoutChildArray.index(paneSectionShortName)
-        #---------------------------- END OF DEBUG ------------------------------------
+        logger.debug("parentPaneLayout children- %s",parentPaneLayoutChildArray )
+        logger.debug("       child index number- %s",parentPaneLayoutChildArray.index(paneSectionShortName) )
 
 
         ''' --- SECOND ---
@@ -133,7 +146,6 @@ def split( paneSection, re_assign_position="" ):
 
             paneSectionNumber           :   pane index is the index of the child element + 1
         '''
-        import re
         paneSectionShortName = re.split("\|",paneSection)[-1] # strip the short name from the full name
         paneSectionNumber = c.paneLayout( parentPaneLayout, query=True, ca=True).index(paneSectionShortName)+1
 
@@ -174,156 +186,189 @@ def split( paneSection, re_assign_position="" ):
             newSectionPaneIndex = 2
             oldSectionPaneIndex = 1
 
+        logger.debug("\n-------- Setting values for new paneLayouts -------- " )
         newPaneLayout =  c.paneLayout(configuration=paneConfig, parent=parentPaneLayout)
-        # print newPaneLayout, c.paneLayout(newPaneLayout, q=1,ex=1)
+
+        logger.debug( "     parentPaneLayout : %s",parentPaneLayout )
+        logger.debug( "          paneSection : %s",paneSection )
+        logger.debug( "        newPaneLayout : %s",newPaneLayout )
+        logger.debug( "paneLayout exist test : %s",c.paneLayout(newPaneLayout, q=1,ex=1) )
         c.paneLayout(parentPaneLayout, edit=True,
                      setPane=[( newPaneLayout, paneSectionNumber )]  )
-        # print "assigning new split to current pane................."
+
+        logger.debug( "assigning new split to current pane................." )
         c.control(paneSection, edit=True, parent=newPaneLayout)
         c.paneLayout(newPaneLayout, edit=True,
                      setPane=[ (createInput( newPaneLayout ) , newSectionPaneIndex),
                                (        paneSection          , oldSectionPaneIndex) ] )
 
+    logger.debug(" --------------------- Splitted")
+    logger.debug("")
+
 
 def deletePane(paneSection):
+    '''
+    This procedure removes the pane specified in the parameter, effectively
+    re-merging the other pane in the shared pane layout to the pane layout
+    above it. The following is a rough outline of what happens
+
+    1 --- Find Parent Layout
+    2 --- Find other secion's name and number, this will be kept
+    3 --- Find grand parent layout
+    4 --- Find section number of parent layout under grand parent layout
+    5 --- Re-parent other section --> grand parent layout, same section number as parent layout
+    6 --- Delete parent layout, which also deletes the current section (parent layout's child)
+    '''
+    logger.debug(" Deleting Pane --------------------")
+    logger.debug("        paneSection : %s",paneSection)
+
+    ''' --- FIRST ---
+            Find the paneLayout above the current control/layout.
+            This is done through assigning and reassigning the parent
+            and child, shuffling up the levels of parents until the
+            a paneLayout is identified
+
+            paneSection         :   child right underneath the paneLayout that the
+                                    input/output section belong to
+            parentPaneLayout    :   paneLayout that is the parent of the pane that
+                                    called the split, initially initialised to paneSection
+                                    in order to start the parent traversal algorithm
         '''
-        This procedure removes the pane specified in the parameter, effectively
-        re-merging the other pane in the shared pane layout to the pane layout
-        above it. The following is a rough outline of what happens
+    parentPaneLayout = paneSection
+    while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
+        paneSection = parentPaneLayout
+        parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
+        logger.debug("      paneSection becomes : %s",paneSection)
+        logger.debug(" parentPaneLayout becomes : %s",parentPaneLayout)
 
-        1 --- Find Parent Layout
-        2 --- Find other secion's name and number, this will be kept
-        3 --- Find grand parent layout
-        4 --- Find section number of parent layout under grand parent layout
-        5 --- Re-parent other section --> grand parent layout, same section number as parent layout
-        6 --- Delete parent layout, which also deletes the current section (parent layout's child)
-        '''
+    ''' --- SECOND ---
+            Figure out which indices the various children of the different pane layouts
+            are, as well as the grand parent layout. Can't forget about the grannies
 
-        ''' --- FIRST ---
-                Find the paneLayout above the current control/layout.
-                This is done through assigning and reassigning the parent
-                and child, shuffling up the levels of parents until the
-                a paneLayout is identified
+    '''
+    parentPaneLayoutChildren        = c.paneLayout( parentPaneLayout, query=True, childArray=True)
+    logger.debug("      parentPaneLayoutChildren : %s",parentPaneLayoutChildren)
 
-                paneSection         :   child right underneath the paneLayout that the
-                                        input/output section belong to
-                parentPaneLayout    :   paneLayout that is the parent of the pane that
-                                        called the split, initially initialised to paneSection
-                                        in order to start the parent traversal algorithm
-            '''
-        parentPaneLayout = paneSection
-        while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
-            paneSection = parentPaneLayout
-            parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
+    grandParentPaneLayout           = c.paneLayout( parentPaneLayout, query=True, parent=True)
+    logger.debug("         grandParentPaneLayout : %s",grandParentPaneLayout)
 
-        ''' --- SECOND ---
-                Figure out which indices the various children of the different pane layouts
-                are, as well as the grand parent layout. Can't forget about the grannies
+    grandParentPaneLayoutChildren   = c.paneLayout( grandParentPaneLayout, query=True, childArray=True)
+    logger.debug(" grandParentPaneLayoutChildren : %s",grandParentPaneLayoutChildren)
 
-        '''
-        parentPaneLayoutChildren        = c.paneLayout( parentPaneLayout, query=True, childArray=True)
-        grandParentPaneLayout           = c.paneLayout( parentPaneLayout, query=True, parent=True)
-        grandParentPaneLayoutChildren   = c.paneLayout( grandParentPaneLayout, query=True, childArray=True)
+    paneSectionShortName        = re.split("\|",paneSection)[-1] # strip the short name from the full name
+    logger.debug("          paneSectionShortName : %s",paneSectionShortName)
 
-        import re
-        paneSectionShortName        = re.split("\|",paneSection)[-1] # strip the short name from the full name
-        parentPaneLayoutShortName   = re.split("\|",parentPaneLayout)[-1] # strip the short name from the full name
+    parentPaneLayoutShortName   = re.split("\|",parentPaneLayout)[-1] # strip the short name from the full name
+    logger.debug("     parentPaneLayoutShortName : %s",parentPaneLayoutShortName)
 
-        parentPaneLayoutSectionNumber   = grandParentPaneLayoutChildren.index(parentPaneLayoutShortName)+1
 
-        otherPaneChildNum           = ( parentPaneLayoutChildren.index(paneSectionShortName)+1 ) % 2
-        otherParentPaneSectionNum   = (parentPaneLayoutSectionNumber % 2) + 1
+    parentPaneLayoutSectionNumber   = grandParentPaneLayoutChildren.index(parentPaneLayoutShortName)+1
+    logger.debug(" parentPaneLayoutSectionNumber : %s",parentPaneLayoutSectionNumber)
 
-        ''' --- FINALLY ---
-                Re-parenting and assigning the control to the grand parent layout
-                and deleting the pane layout that it previously resided under
-        '''
-        c.control( parentPaneLayoutChildren[otherPaneChildNum], edit=True, parent=grandParentPaneLayout)
-        c.paneLayout( grandParentPaneLayout, edit=True,
-                        setPane=[ parentPaneLayoutChildren[otherPaneChildNum], parentPaneLayoutSectionNumber ])
-        # c.deleteUI( parentPaneLayout ) # Segmentation fault causer in 2014 SP2 Linux
+    otherPaneChildNum           = ( parentPaneLayoutChildren.index(paneSectionShortName)+1 ) % 2
+    logger.debug("             otherPaneChildNum : %s",otherPaneChildNum)
+
+    otherParentPaneSectionNum   = (parentPaneLayoutSectionNumber % 2) + 1
+    logger.debug("     otherParentPaneSectionNum : %s",otherParentPaneSectionNum)
+
+    ''' --- FINALLY ---
+            Re-parenting and assigning the control to the grand parent layout
+            and deleting the pane layout that it previously resided under
+    '''
+    c.control( parentPaneLayoutChildren[otherPaneChildNum], edit=True, parent=grandParentPaneLayout)
+    c.paneLayout( grandParentPaneLayout, edit=True,
+                    setPane=[ parentPaneLayoutChildren[otherPaneChildNum], parentPaneLayoutSectionNumber ])
+    # c.deleteUI( parentPaneLayout ) # Segmentation fault causer in 2014 SP2 Linux
+
+    logger.debug(" --------------------- Deleted Pane")
+    logger.debug("")
 
 
 def saveScript(paneSection, saveAs):
-        '''
-        This procedure saves the current active tab's script to a file. If...
+    '''
+    This procedure saves the current active tab's script to a file. If...
 
-        Current tab has file location |  and saveAs is  | then...
-        ==============================|=================|===========================
-                    Yes               |       Yes       |   Save to new file
-        ------------------------------|-----------------|---------------------------
-                    No                |       Yes       |   Save to new file
-        ------------------------------|-----------------|---------------------------
-                    Yes               |       No        |   Save to file location
-        ------------------------------|-----------------|---------------------------
-                    No                |       No        |   Save to new file
+    Current tab has file location |  and saveAs is  | then...
+    ==============================|=================|===========================
+                Yes               |       Yes       |   Save to new file
+    ------------------------------|-----------------|---------------------------
+                No                |       Yes       |   Save to new file
+    ------------------------------|-----------------|---------------------------
+                Yes               |       No        |   Save to file location
+    ------------------------------|-----------------|---------------------------
+                No                |       No        |   Save to new file
 
 
 
-        1 --- Find Parent Layout
-        2 --- Find other secion's name and number, this will be kept
-        3 --- Find grand parent layout
-        4 --- Find section number of parent layout under grand parent layout
-        5 --- Re-parent other section --> grand parent layout, same section number as parent layout
-        6 --- Delete parent layout, which also deletes the current section (parent layout's child)
-        '''
+    1 --- Find Parent Layout
+    2 --- Find other secion's name and number, this will be kept
+    3 --- Find grand parent layout
+    4 --- Find section number of parent layout under grand parent layout
+    5 --- Re-parent other section --> grand parent layout, same section number as parent layout
+    6 --- Delete parent layout, which also deletes the current section (parent layout's child)
+    '''
+    logger.debug(" Saving script ---------------")
+    logger.debug("       paneSection : %s",paneSection)
+    logger.debug("            saveAs : %s",saveAs)
+    logger.debug("          executer : %s",c.cmdScrollFieldExecuter( paneSection, q=1, ex=1) )
+    logger.debug("          reporter : %s",c.cmdScrollFieldReporter( paneSection, q=1, ex=1) )
 
-        print "---------> executer",c.cmdScrollFieldExecuter( paneSection, q=1, ex=1)
-        print "---------> reporter",c.cmdScrollFieldReporter( paneSection, q=1, ex=1)
+    if c.cmdScrollFieldReporter( paneSection, q=1, ex=1):
+        logger.debug( "line numbering was..%s",c.cmdScrollFieldReporter( paneSection, q=1, ln=1) )
+        c.cmdScrollFieldReporter( paneSection, e=1, ln=0)
+        logger.debug( "line numbering is...%s",c.cmdScrollFieldReporter( paneSection, q=1, ln=1) )
 
-        if c.cmdScrollFieldReporter( paneSection, q=1, ex=1):
-            print "line numbering was..",c.cmdScrollFieldReporter( paneSection, q=1, ln=1)
-            c.cmdScrollFieldReporter( paneSection, e=1, ln=0)
-            print "line numbering is...",c.cmdScrollFieldReporter( paneSection, q=1, ln=1)
+    ''' --- FIRST ---
+            Find the paneLayout above the current control/layout.
+            This is done through assigning and reassigning the parent
+            and child, shuffling up the levels of parents until the
+            a paneLayout is identified
 
-        ''' --- FIRST ---
-                Find the paneLayout above the current control/layout.
-                This is done through assigning and reassigning the parent
-                and child, shuffling up the levels of parents until the
-                a paneLayout is identified
+            paneSection         :   child right underneath the paneLayout that the
+                                    input/output section belong to
+            parentPaneLayout    :   paneLayout that is the parent of the pane that
+                                    called the split, initially initialised to paneSection
+                                    in order to start the parent traversal algorithm
+    parentPaneLayout = paneSection
+    while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
+        paneSection = parentPaneLayout
+        parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
+    '''
 
-                paneSection         :   child right underneath the paneLayout that the
-                                        input/output section belong to
-                parentPaneLayout    :   paneLayout that is the parent of the pane that
-                                        called the split, initially initialised to paneSection
-                                        in order to start the parent traversal algorithm
-        parentPaneLayout = paneSection
-        while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
-            paneSection = parentPaneLayout
-            parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
-        '''
+    ''' --- SECOND ---
+            Figure out which indices the various children of the different pane layouts
+            are, as well as the grand parent layout. Can't forget about the grannies
 
-        ''' --- SECOND ---
-                Figure out which indices the various children of the different pane layouts
-                are, as well as the grand parent layout. Can't forget about the grannies
+    parentPaneLayoutChildren        = c.paneLayout( parentPaneLayout, query=True, childArray=True)
+    grandParentPaneLayout           = c.paneLayout( parentPaneLayout, query=True, parent=True)
+    grandParentPaneLayoutChildren   = c.paneLayout( grandParentPaneLayout, query=True, childArray=True)
 
-        parentPaneLayoutChildren        = c.paneLayout( parentPaneLayout, query=True, childArray=True)
-        grandParentPaneLayout           = c.paneLayout( parentPaneLayout, query=True, parent=True)
-        grandParentPaneLayoutChildren   = c.paneLayout( grandParentPaneLayout, query=True, childArray=True)
+    paneSectionShortName        = re.split("\|",paneSection)[-1] # strip the short name from the full name
+    parentPaneLayoutShortName   = re.split("\|",parentPaneLayout)[-1] # strip the short name from the full name
 
-        import re
-        paneSectionShortName        = re.split("\|",paneSection)[-1] # strip the short name from the full name
-        parentPaneLayoutShortName   = re.split("\|",parentPaneLayout)[-1] # strip the short name from the full name
+    parentPaneLayoutSectionNumber   = grandParentPaneLayoutChildren.index(parentPaneLayoutShortName)+1
 
-        parentPaneLayoutSectionNumber   = grandParentPaneLayoutChildren.index(parentPaneLayoutShortName)+1
+    otherPaneChildNum           = ( parentPaneLayoutChildren.index(paneSectionShortName)+1 ) % 2
+    otherParentPaneSectionNum   = (parentPaneLayoutSectionNumber % 2) + 1
+    '''
 
-        otherPaneChildNum           = ( parentPaneLayoutChildren.index(paneSectionShortName)+1 ) % 2
-        otherParentPaneSectionNum   = (parentPaneLayoutSectionNumber % 2) + 1
-        '''
+    ''' --- FINALLY ---
+            Re-parenting and assigning the control to the grand parent layout
+            and deleting the pane layout that it previously resided under
+    c.control( parentPaneLayoutChildren[otherPaneChildNum], edit=True, parent=grandParentPaneLayout)
+    c.paneLayout( grandParentPaneLayout, edit=True,
+                    setPane=[ parentPaneLayoutChildren[otherPaneChildNum], parentPaneLayoutSectionNumber ])
+    # c.deleteUI( parentPaneLayout ) # Segmentation fault causer in 2014 SP2 Linux
 
-        ''' --- FINALLY ---
-                Re-parenting and assigning the control to the grand parent layout
-                and deleting the pane layout that it previously resided under
-        c.control( parentPaneLayoutChildren[otherPaneChildNum], edit=True, parent=grandParentPaneLayout)
-        c.paneLayout( grandParentPaneLayout, edit=True,
-                        setPane=[ parentPaneLayoutChildren[otherPaneChildNum], parentPaneLayoutSectionNumber ])
-        # c.deleteUI( parentPaneLayout ) # Segmentation fault causer in 2014 SP2 Linux
+    '''
 
-        '''
-
+    logger.debug(" ---------------- Saved script")
+    logger.debug("")
 
 def createPaneMenu( ctrl ):
-    # print 'called create menu with '+str(ctrl)+'...........'
+    logger.debug(" Creating Pane Menu --------------------")
+    logger.debug("        ctrl : %s",ctrl)
+
     c.popupMenu( parent=ctrl , altModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
     c.menuItem(  label="Right", radialPosition="E",
                     command="JSE.split('"+ctrl+"','right')" )
@@ -342,8 +387,13 @@ def createPaneMenu( ctrl ):
     c.menuItem(  label="Save script...",
                     command="JSE.saveScript('"+ctrl+"',False)")
 
+    logger.debug(" --------------------- Created Pane Menu")
+    logger.debug("")
 
 def createInputMenu( ctrl ):
+    logger.debug(" Creating Input Menu --------------------")
+    logger.debug("        ctrl : %s",ctrl)
+
     c.popupMenu( parent=ctrl , shiftModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
     c.menuItem(  label="Create Python", radialPosition="E",
                     command="JSE.split('"+ctrl+"','right')" )
@@ -362,8 +412,13 @@ def createInputMenu( ctrl ):
     c.menuItem(  label="Save script...",
                     command="JSE.saveScript('"+ctrl+"',False)")
 
+    logger.debug(" --------------------- Created Input Menu")
+    logger.debug("")
 
 def createExpressionMenu( ctrl ):
+    logger.debug(" Creating Expression Menu --------------------")
+    logger.debug("        ctrl : %s",ctrl)
+
     c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
     c.menuItem(  label="Right", radialPosition="E",
                     command="JSE.split('"+ctrl+"','right')" )
@@ -382,11 +437,17 @@ def createExpressionMenu( ctrl ):
     c.menuItem(  label="Save script...",
                     command="JSE.saveScript('"+ctrl+"',False)")
 
+    logger.debug(" --------------------- Created Expression Menu")
+    logger.debug("")
 
 def createOutput( parentPanelLayout ):
+    logger.debug("Creating output -----------------------------------")
+    logger.debug("      parentPanelLayout : %s",parentPanelLayout)
     output = c.cmdScrollFieldReporter(parent = parentPanelLayout, backgroundColor=[0.1,0.1,0.1] )
     createPaneMenu( output )
-    print "output created...."
+    logger.debug("                 output : %s",parentPanelLayout)
+    logger.debug("----------------------------------- Created output!")
+    logger.debug("")
     return output
 
 
@@ -486,20 +547,31 @@ def createInput( parentUI ):
     global currentInputTabs
     global currentInputTabCode
 
+    logger.debug("Creating input -----------------------------------")
+    logger.debug("         parentUI : %s",parentUI)
+
     inputLayout = c.formLayout(parent = parentUI) # formLayout that will hold all the tabs and command line text field
     inputTabsLay = c.tabLayout() # tabLayout that will hold all the input tab buffers
 
+    logger.debug("      inputLayout : %s",inputLayout)
+    logger.debug("     inputTabsLay : %s",inputTabsLay )
 
     #==========================================================================================================================
     #= See if previous JSE Tab settings exist, otherwise hijack Maya's current ones
     #==========================================================================================================================
     if c.optionVar(exists="JSE_input_tabLangs"): # Has JSE been used before? (It would have stored this variable)
-    # (YES)
+        # (YES)
+        logger.info("Previous JSE existed, loading previous setting from optionVars")
+
         currentInputTabType  = c.optionVar(q="JSE_input_tabLangs") # Get list of tabs' languages
         currentInputTabLabels = c.optionVar(q="JSE_input_tabLabels")# Get list of tabs' label/names
         currentInputTabFiles  = c.optionVar(q="JSE_input_tabFiles") # Get list of tabs' associated file addressess
-        for i in currentInputTabType:currentInputTabCode.append( "" )
+        for i in currentInputTabType: currentInputTabCode.append( "" )
+
     else: # (NO)
+        logger.info("No previous JSE optionVars found, must be fresh run of JSE eh?!")
+        logger.info("Hijacking settings and contents from Maya's script editor...")
+
         if melEval("$workaroundToGetVariables = $gCommandExecuterType"): # What about Maya's own script editor, was it used?
             # (YES) Retrieve existing tabs' languages from the latest Maya script editor state
 
@@ -508,20 +580,19 @@ def createInput( parentUI ):
             currentInputTabLabels = melEval("$workaroundToGetVariables = $gCommandExecuterName")
             for cmdExecuter in melEval("$workaroundToGetVariables = $gCommandExecuter"):
                 currentInputTabCode.append( c.cmdScrollFieldExecuter(cmdExecuter, q=1, t=1) )
-                print "appending"
+                logger.debug( "appending" )
 
         else: # (NO)
-            print "===Maya's own script editor, wasn't used!! NUTS! THIS SHOULD NOT BE HAPPENING==="
-            print "===Default to standard [MEL, PYTHON] tab==="
+            logger.critical( "=== Maya's own script editor, wasn't used!! NUTS! THIS SHOULD NOT BE HAPPENING ===" )
+            logger.critical( "=== Default to standard [MEL, PYTHON] tab ===" )
             currentInputTabType  = ["mel","python"]
             currentInputTabLabels = ["mel","python"]
 
         # Either way, whether Maya have it or not, it definitely will not have file locations, so we create one
         for i in range( len(currentInputTabType) ):
-            fileExt = ""
-            if currentInputTabType[i] == "python": fileExt = "py"
-            else: fileExt = "mel"
             currentInputTabFiles.append("")
+
+
 
         # Store the settings
         for i in currentInputTabType : c.optionVar(stringValueAppend=["JSE_input_tabLangs" ,i])
@@ -531,16 +602,22 @@ def createInput( parentUI ):
 
 
 
+    logger.debug("   currentInputTabType : %s",currentInputTabType)
+    logger.debug(" currentInputTabLabels : %s",currentInputTabLabels)
+    logger.debug("  currentInputTabFiles : %s",currentInputTabFiles)
+    logger.debug("   currentInputTabCode : %s",currentInputTabCode)
+
     #=============================================================
     #= Create the tabs
     #=============================================================
     if len(currentInputTabType) != len(currentInputTabLabels):
-        print "You're fucked, len(currentInputTabType) should euqal len(currentInputTabLabels)",\
-              "\n currentInputTabType",len(currentInputTabType),currentInputTabType,\
-              "\n currentInputTabLabels",len(currentInputTabLabels),currentInputTabLabels,\
-              "\n currentInputTabFiles",len(currentInputTabFiles),currentInputTabFiles
+        logger.critical("You're fucked!, len(currentInputTabType) should euqal len(currentInputTabLabels)")
+        logger.critical("   currentInputTabType (len,value): %s %s",len(currentInputTabType) ,  currentInputTabType)
+        logger.critical(" currentInputTabLabels (len,value): %s %s",len(currentInputTabLabels), currentInputTabLabels)
+        logger.critical("  currentInputTabFiles (len,value): %s %s",len(currentInputTabFiles),  currentInputTabFiles)
     else:
-        print len(currentInputTabLabels), len(currentInputTabCode)
+        logger.debug("  len(currentInputTabLabels) : %s",len(currentInputTabLabels))
+        logger.debug("    len(currentInputTabCode) : %s",len(currentInputTabCode))
         for i in xrange( len(currentInputTabLabels) ):
             currentInputTabs.append(
                 makeInputTab(   currentInputTabType[i],
@@ -570,7 +647,8 @@ def createInput( parentUI ):
                  # Snap the bottom of the tabLayout to the top of cmdLine
 
 
-    print "input created...."
+    logger.debug("------------------------------------ Created input")
+    logger.debug("")
 
     return inputLayout
 
@@ -581,11 +659,11 @@ def saveAllTabs():
     global currentInputTabFiles
     global currentInputTabs
 
+    logger.debug("Saving All --------------------------------------")
     """
     First get the path to the scriptEditorTemp by hijacking from icons path
     as internalVar does not work well (in python anyway)
     """
-    import re
     scriptEditorTempPath = ""
     mayaIconPath = melEval("getenv XBMLANGPATH")
     for i in re.split(":",mayaIconPath):
@@ -623,6 +701,8 @@ def saveAllTabs():
         # make sure the text is not selected
         c.cmdScrollFieldExecuter(currentInputTabs[i], e=1, select=[0,0] )
 
+    logger.debug("--------------------------------------- Saved All")
+    logger.debug("")
 
 def saveCurrentSettings():
     global currentInputTabType
@@ -660,6 +740,7 @@ def wipeOptionVars():
 
 
 def layoutJSE():
+    logger.debug("Layout JSE ---------------------------------------")
     def recursiveLayoutTraverse(JSELayout, layerNum):
         layoutChildArray = c.layout(JSELayout, q=1, ca=1)
         if layoutChildArray:
@@ -673,9 +754,11 @@ def layoutJSE():
                     pass
 
     global layout
-    print "------------------JSE LAYOUT------------------"
+
     recursiveLayoutTraverse(layout, 0)
 
+    logger.debug("--------------------------------------- Layout JSE")
+    logger.debug("")
     ''' EXAMPLE OUTPUT
     paneLayout38
     cmdScrollFieldReporter18
@@ -772,7 +855,8 @@ def run(dockable):
     global layout
     global engaged
 
-    print "JSE called ------------------"
+    logger.info("")
+    logger.info("JSE called ------------------")
 
     #---- Setup ----
     window = c.window(title="JSE", width=950, height=650)
@@ -782,11 +866,11 @@ def run(dockable):
 
     if dockable:
         c.dockControl("JSE",area='left',floating=True,content=window)
-        print "Dockable",
+        logger.info( "Dockable JSE created ------------------" )
     else:
         c.showWindow(window)
-        print "Standard",
-    print "JSE created ------------------"
+        logger.info( "Standard JSE created ------------------" )
+    logger.info("")
 
     engaged = True
     saveAllTabs()
