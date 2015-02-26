@@ -1,5 +1,6 @@
 import maya.cmds as c
 from maya.mel import eval as melEval
+
 '''
 === TERMINOLOGY GUIDE ===
 
@@ -33,6 +34,8 @@ showTooltipHelp
 
 
 '''
+
+
 def exprMenuChange():
     """ ==========Evaluation methods from expressionEdCallbacks.mel==========
     global proc EEanimatedCB()
@@ -56,6 +59,7 @@ def exprMenuChange():
     }   // EEanimatedCB
     """
     pass
+
 
 def split( paneSection, re_assign_position="" ):
     """
@@ -321,10 +325,6 @@ def saveScript(paneSection, saveAs):
 def createPaneMenu( ctrl ):
     # print 'called create menu with '+str(ctrl)+'...........'
     c.popupMenu( parent=ctrl , altModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
-    '''
-    c.menuItem(  label="Panes...", radialPosition="NW",
-                    submenu=True )
-    '''
     c.menuItem(  label="Right", radialPosition="E",
                     command="JSE.split('"+ctrl+"','right')" )
     c.menuItem(  label="Left", radialPosition="W",
@@ -334,6 +334,26 @@ def createPaneMenu( ctrl ):
     c.menuItem(  label="Above", radialPosition="N",
                     command="JSE.split('"+ctrl+"','top')" )
 
+    c.menuItem(  label="---Pane Section Menu---", enable=False)
+    c.menuItem(  label="Remove This Pane!",
+                    command="JSE.deletePane('"+ctrl+"')")
+    c.menuItem(  label="Save script as...",
+                    command="JSE.saveScript('"+ctrl+"',True)")
+    c.menuItem(  label="Save script...",
+                    command="JSE.saveScript('"+ctrl+"',False)")
+
+
+def createInputMenu( ctrl ):
+    c.popupMenu( parent=ctrl , shiftModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
+    c.menuItem(  label="Create Python", radialPosition="E",
+                    command="JSE.split('"+ctrl+"','right')" )
+    c.menuItem(  label="Create MEL", radialPosition="W",
+                    command="JSE.split('"+ctrl+"','left')" )
+    c.menuItem(  label="Below", radialPosition="S",
+                    command="JSE.split('"+ctrl+"','bottom')" )
+    c.menuItem(  label="Create Expression", radialPosition="N",
+                    command="JSE.split('"+ctrl+"','top')" )
+
     c.menuItem(  label="Hey you! Choose new section location...", enable=False)
     c.menuItem(  label="Remove This Pane!",
                     command="JSE.deletePane('"+ctrl+"')")
@@ -341,15 +361,9 @@ def createPaneMenu( ctrl ):
                     command="JSE.saveScript('"+ctrl+"',True)")
     c.menuItem(  label="Save script...",
                     command="JSE.saveScript('"+ctrl+"',False)")
-    '''
-    c.setParent(menu=1)
 
-    c.menuItem(  label="Tab...", radialPosition="NE",
-                    submenu=True )
-    '''
 
-'''def createExpressionMenu( ctrl ):
-    # print 'called create menu with '+str(ctrl)+'...........'
+def createExpressionMenu( ctrl ):
     c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
     c.menuItem(  label="Right", radialPosition="E",
                     command="JSE.split('"+ctrl+"','right')" )
@@ -367,7 +381,6 @@ def createPaneMenu( ctrl ):
                     command="JSE.saveScript('"+ctrl+"',True)")
     c.menuItem(  label="Save script...",
                     command="JSE.saveScript('"+ctrl+"',False)")
-'''
 
 
 def createOutput( parentPanelLayout ):
@@ -595,6 +608,7 @@ def saveAllTabs():
             fileExt=""
             if currentInputTabType[i] == "python": fileExt = "py"
             else: fileExt = "mel"
+
             c.cmdScrollFieldExecuter(currentInputTabs[i], e=1,
                                      storeContents="JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt)
             """
@@ -607,7 +621,7 @@ def saveAllTabs():
                 print "Saved",currentInputTabFiles[i]
 
         # make sure the text is not selected
-        c.cmdScrollFieldExecuter(inputField, e=1, select=[0,0] )
+        c.cmdScrollFieldExecuter(currentInputTabs[i], e=1, select=[0,0] )
 
 
 def saveCurrentSettings():
@@ -733,6 +747,10 @@ def debugGlobals():
     global layout
     global engaged
 
+    print "========================================================================================"
+    print "===================         JSE  Debug Globals              ============================"
+    print "========================================================================================"
+
     print "currentInputTabType, size :",len(currentInputTabType),"\n",currentInputTabType,"\n"
     print "currentInputTabLabels, size :",len(currentInputTabLabels),"\n",currentInputTabLabels,"\n"
     print "currentInputTabFiles, size :",len(currentInputTabFiles),"\n",currentInputTabFiles,"\n"
@@ -757,9 +775,7 @@ def run(dockable):
     print "JSE called ------------------"
 
     #---- Setup ----
-    window = ""
-    if engaged: window = c.window(width=950, height=650)
-    else : window = c.window( retain=1,width=950, height=650)
+    window = c.window(title="JSE", width=950, height=650)
 
     currentInputTabLayouts.append( c.paneLayout() )
     newPaneLayout = split( currentInputTabLayouts[-1] )
@@ -773,6 +789,7 @@ def run(dockable):
     print "JSE created ------------------"
 
     engaged = True
+    saveAllTabs()
 
 # End of script, if you want to to run it from just import
 # run(0)
