@@ -660,16 +660,7 @@ def saveAllTabs():
     global currentInputTabs
 
     logger.debug("Saving All --------------------------------------")
-    """
-    First get the path to the scriptEditorTemp by hijacking from icons path
-    as internalVar does not work well (in python anyway)
-    """
-    scriptEditorTempPath = ""
-    mayaIconPath = melEval("getenv XBMLANGPATH")
-    for i in re.split(":",mayaIconPath):
-        if re.match(".*/maya/.*/prefs/.*",i):
-            scriptEditorTempPath = re.split("icon",i)[0]+"scriptEditorTemp/"
-            break # Get outta there once you got the path
+    scriptEditorTempPath = c.about(preferences=1)+"/prefs/scriptEditorTemp/"
 
     """
     Then delete the existing buffers in the temp location
