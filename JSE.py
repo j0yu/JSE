@@ -5,7 +5,7 @@ from maya.mel import eval as melEval
 import logging
 logger = logging.getLogger("JSE")
 # Logger levels: CRITICAL ERROR WARNING INFO DEBUG NOTSET
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 '''
@@ -81,7 +81,7 @@ def split( paneSection, re_assign_position="" ):
                            "top"
     """
     global currentInputTabLayouts
-    logger.debug(" Splitting --------------------")
+    logger.info(" Splitting --------------------")
     logger.debug("        paneSection : %s",paneSection)
     logger.debug(" re_assign_position : %s",re_assign_position)
     if re_assign_position == "":
@@ -114,7 +114,7 @@ def split( paneSection, re_assign_position="" ):
                                     in order to start the parent traversal algorithm
         '''
         parentPaneLayout = c.control(paneSection, query=True, parent=True)
-        logger.debug("\n--------Traversing to get parent paneLayout --------")
+        logger.info("--------Traversing to get parent paneLayout --------")
         while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
             paneSection = parentPaneLayout
             logger.debug("parentPaneLayout was ----- %s",parentPaneLayout)
@@ -123,7 +123,7 @@ def split( paneSection, re_assign_position="" ):
             logger.debug("parentPaneLayout becomes - %s",parentPaneLayout)
 
 
-        logger.debug("\n--------------- After traversal debug --------------------")
+        logger.debug("--------------- After traversal debug --------------------")
         logger.debug("parent paneLayout is ----- %s",parentPaneLayout )
         logger.debug("           child is ------ %s --- %s",paneSection,c.control(paneSection,q=1,ex=1) )
         paneSectionShortName = re.split("\|",paneSection)[-1]
@@ -186,7 +186,7 @@ def split( paneSection, re_assign_position="" ):
             newSectionPaneIndex = 2
             oldSectionPaneIndex = 1
 
-        logger.debug("\n-------- Setting values for new paneLayouts -------- " )
+        logger.info("-------- Setting values for new paneLayouts -------- " )
         newPaneLayout =  c.paneLayout(configuration=paneConfig, parent=parentPaneLayout)
 
         logger.debug( "     parentPaneLayout : %s",parentPaneLayout )
@@ -202,8 +202,8 @@ def split( paneSection, re_assign_position="" ):
                      setPane=[ (createInput( newPaneLayout ) , newSectionPaneIndex),
                                (        paneSection          , oldSectionPaneIndex) ] )
 
-    logger.debug(" --------------------- Splitted")
-    logger.debug("")
+    logger.info(" --------------------- Splitted")
+    logger.info("")
 
 
 def deletePane(paneSection):
@@ -235,7 +235,7 @@ def deletePane(paneSection):
                                     in order to start the parent traversal algorithm
         '''
     parentPaneLayout = c.control(paneSection, query=True, parent=True)
-    logger.debug("\n--------Traversing to get parent paneLayout --------")
+    logger.info("--------Traversing to get parent paneLayout --------")
     while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
         paneSection = parentPaneLayout
         logger.debug("parentPaneLayout was ----- %s",parentPaneLayout)
@@ -316,7 +316,7 @@ def saveScript(paneSection, saveAs):
     5 --- Re-parent other section --> grand parent layout, same section number as parent layout
     6 --- Delete parent layout, which also deletes the current section (parent layout's child)
     '''
-    logger.debug(" Saving script ---------------")
+    logger.info(" Saving script ---------------")
     logger.debug("       paneSection : %s",paneSection)
     logger.debug("            saveAs : %s",saveAs)
     logger.debug("          executer : %s",c.cmdScrollFieldExecuter( paneSection, q=1, ex=1) )
@@ -371,11 +371,11 @@ def saveScript(paneSection, saveAs):
 
     '''
 
-    logger.debug(" ---------------- Saved script")
-    logger.debug("")
+    logger.info(" ---------------- Saved script")
+    logger.info("")
 
 def createPaneMenu( ctrl ):
-    logger.debug(" Creating Pane Menu --------------------")
+    logger.info(" Creating Pane Menu --------------------")
     logger.debug("        ctrl : %s",ctrl)
 
     c.popupMenu( parent=ctrl , altModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
@@ -396,11 +396,11 @@ def createPaneMenu( ctrl ):
     c.menuItem(  label="Save script...",
                     command="JSE.saveScript('"+ctrl+"',False)")
 
-    logger.debug(" --------------------- Created Pane Menu")
-    logger.debug("")
+    logger.info(" --------------------- Created Pane Menu")
+    logger.info("")
 
 def createInputMenu( ctrl ):
-    logger.debug(" Creating Input Menu --------------------")
+    logger.info(" Creating Input Menu --------------------")
     logger.debug("        ctrl : %s",ctrl)
 
     c.popupMenu( parent=ctrl , shiftModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
@@ -446,17 +446,17 @@ def createExpressionMenu( ctrl ):
     c.menuItem(  label="Save script...",
                     command="JSE.saveScript('"+ctrl+"',False)")
 
-    logger.debug(" --------------------- Created Expression Menu")
-    logger.debug("")
+    logger.info(" --------------------- Created Expression Menu")
+    logger.info("")
 
 def createOutput( parentPanelLayout ):
-    logger.debug("Creating output -----------------------------------")
+    logger.info("Creating output -----------------------------------")
     logger.debug("      parentPanelLayout : %s",parentPanelLayout)
     output = c.cmdScrollFieldReporter(parent = parentPanelLayout, backgroundColor=[0.1,0.1,0.1] )
     createPaneMenu( output )
     logger.debug("                 output : %s",parentPanelLayout)
-    logger.debug("----------------------------------- Created output!")
-    logger.debug("")
+    logger.info("----------------------------------- Created output!")
+    logger.info("")
     return output
 
 
@@ -464,14 +464,22 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
     '''
         If there is no text then load from file
     '''
+    logger.info("Making input tab -----------------------------------")
+    logger.debug("          tabUsage : %s",tabUsage)
+    logger.debug("        pTabLayout : %s",pTabLayout)
+    logger.debug("          tabLabel : %s",tabLabel)
+    logger.debug("              text : %s",text)
+    logger.debug("      fileLocation : %s",fileLocation)
     inputField = ""
 
     if tabUsage == "mel"     : bkgndColour = [0.16, 0.16, 0.16]
     if tabUsage == "expr"    : bkgndColour = [0.16, 0.13, 0.13]
     if tabUsage == "python"  : bkgndColour = [0.12, 0.14, 0.15]
+    logger.debug("       bkgndColour : %s",bkgndColour)
 
     if tabUsage == "python"  : tabLang = "python"
     else                     : tabLang = "mel"
+    logger.debug("           tabLang : %s",tabLang)
 
 
     if tabUsage == "expr":
@@ -497,6 +505,8 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
                                                 parent=exprForm,
 
                                                 showLineNumbers=True )
+        logger.debug("        inputField : %s",inputField)
+
         c.formLayout(exprForm, e=1, attachForm=([angleOption, "top", 0],
                                                 [evalOption,  "top", 0],
                                                 [defObject,   "top", 0],
@@ -529,6 +539,7 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
                                                 parent=pTabLayout,
 
                                                 showLineNumbers=True )
+        logger.debug("        inputField : %s",inputField)
 
         if fileLocation != "": c.cmdScrollFieldExecuter(inputField, e=1, loadContents=fileLocation)
         if text != ""        :
@@ -546,6 +557,7 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
 
 
 
+    logger.info("------------------------------------- Made input tab")
     return inputField
 
 
@@ -556,7 +568,7 @@ def createInput( parentUI ):
     global currentInputTabs
     global currentInputTabCode
 
-    logger.debug("Creating input -----------------------------------")
+    logger.info("Creating input -----------------------------------")
     logger.debug("         parentUI : %s",parentUI)
 
     inputLayout = c.formLayout(parent = parentUI) # formLayout that will hold all the tabs and command line text field
@@ -656,8 +668,8 @@ def createInput( parentUI ):
                  # Snap the bottom of the tabLayout to the top of cmdLine
 
 
-    logger.debug("------------------------------------ Created input")
-    logger.debug("")
+    logger.info("------------------------------------ Created input")
+    logger.info("")
 
     return inputLayout
 
@@ -668,7 +680,7 @@ def saveAllTabs():
     global currentInputTabFiles
     global currentInputTabs
 
-    logger.debug("Saving All --------------------------------------")
+    logger.info("Saving All --------------------------------------")
     scriptEditorTempPath = c.about(preferences=1)+"/prefs/scriptEditorTemp/"
 
     """
@@ -701,8 +713,8 @@ def saveAllTabs():
         # make sure the text is not selected
         c.cmdScrollFieldExecuter(currentInputTabs[i], e=1, select=[0,0] )
 
-    logger.debug("--------------------------------------- Saved All")
-    logger.debug("")
+    logger.info("--------------------------------------- Saved All")
+    logger.info("")
 
 def saveCurrentSettings():
     global currentInputTabType
@@ -740,7 +752,7 @@ def wipeOptionVars():
 
 
 def layoutJSE():
-    logger.debug("Layout JSE ---------------------------------------")
+    logger.info("Layout JSE ---------------------------------------")
     def recursiveLayoutTraverse(JSELayout, layerNum):
         layoutChildArray = c.layout(JSELayout, q=1, ca=1)
         if layoutChildArray:
@@ -757,8 +769,8 @@ def layoutJSE():
 
     recursiveLayoutTraverse(layout, 0)
 
-    logger.debug("--------------------------------------- Layout JSE")
-    logger.debug("")
+    logger.info("--------------------------------------- Layout JSE")
+    logger.info("")
     ''' EXAMPLE OUTPUT
     paneLayout38
     cmdScrollFieldReporter18
