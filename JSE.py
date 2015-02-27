@@ -5,7 +5,7 @@ from maya.mel import eval as melEval
 import logging
 logger = logging.getLogger("JSE")
 # Logger levels: CRITICAL ERROR WARNING INFO DEBUG NOTSET
-logger.setLevel(logging.CRITICAL)
+logger.setLevel(logging.DEBUG)
 
 
 '''
@@ -234,6 +234,15 @@ def deletePane(paneSection):
                                     called the split, initially initialised to paneSection
                                     in order to start the parent traversal algorithm
         '''
+    parentPaneLayout = c.control(paneSection, query=True, parent=True)
+    logger.debug("\n--------Traversing to get parent paneLayout --------")
+    while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
+        paneSection = parentPaneLayout
+        logger.debug("parentPaneLayout was ----- %s",parentPaneLayout)
+        logger.debug("     paneSection becomes - %s",paneSection)
+        parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
+        logger.debug("parentPaneLayout becomes - %s",parentPaneLayout)
+
     parentPaneLayout = paneSection
     while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
         paneSection = parentPaneLayout
