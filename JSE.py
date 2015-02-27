@@ -667,7 +667,7 @@ def saveAllTabs():
     scriptEditorTempPath = ""
     mayaIconPath = melEval("getenv XBMLANGPATH")
     for i in re.split(":",mayaIconPath):
-        if re.match("/home/.*/maya/.*/prefs/.*",i):
+        if re.match(".*/maya/.*/prefs/.*",i):
             scriptEditorTempPath = re.split("icon",i)[0]+"scriptEditorTemp/"
             break # Get outta there once you got the path
 
