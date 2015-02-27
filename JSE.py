@@ -81,7 +81,7 @@ def split( paneSection, re_assign_position="" ):
                            "top"
     """
     global currentInputTabLayouts
-    logger.info(" Splitting --------------------")
+    logger.info("Splitting --------------------")
     logger.debug("        paneSection : %s",paneSection)
     logger.debug(" re_assign_position : %s",re_assign_position)
     if re_assign_position == "":
@@ -202,7 +202,7 @@ def split( paneSection, re_assign_position="" ):
                      setPane=[ (createInput( newPaneLayout ) , newSectionPaneIndex),
                                (        paneSection          , oldSectionPaneIndex) ] )
 
-    logger.info(" --------------------- Splitted")
+    logger.info("--------------------- Splitted")
     logger.info("")
 
 
@@ -219,7 +219,7 @@ def deletePane(paneSection):
     5 --- Re-parent other section --> grand parent layout, same section number as parent layout
     6 --- Delete parent layout, which also deletes the current section (parent layout's child)
     '''
-    logger.debug(" Deleting Pane --------------------")
+    logger.info(" Deleting Pane --------------------")
     logger.debug("        paneSection : %s",paneSection)
 
     ''' --- FIRST ---
@@ -289,8 +289,8 @@ def deletePane(paneSection):
                     setPane=[ parentPaneLayoutChildren[otherPaneChildNum], parentPaneLayoutSectionNumber ])
     # c.deleteUI( parentPaneLayout ) # Segmentation fault causer in 2014 SP2 Linux
 
-    logger.debug(" --------------------- Deleted Pane")
-    logger.debug("")
+    logger.info(" --------------------- Deleted Pane")
+    logger.info("")
 
 
 def saveScript(paneSection, saveAs):
@@ -316,7 +316,7 @@ def saveScript(paneSection, saveAs):
     5 --- Re-parent other section --> grand parent layout, same section number as parent layout
     6 --- Delete parent layout, which also deletes the current section (parent layout's child)
     '''
-    logger.info(" Saving script ---------------")
+    logger.info("Saving script ---------------")
     logger.debug("       paneSection : %s",paneSection)
     logger.debug("            saveAs : %s",saveAs)
     logger.debug("          executer : %s",c.cmdScrollFieldExecuter( paneSection, q=1, ex=1) )
@@ -371,11 +371,11 @@ def saveScript(paneSection, saveAs):
 
     '''
 
-    logger.info(" ---------------- Saved script")
+    logger.info("---------------- Saved script")
     logger.info("")
 
 def createPaneMenu( ctrl ):
-    logger.info(" Creating Pane Menu --------------------")
+    logger.info("Creating Pane Menu --------------------")
     logger.debug("        ctrl : %s",ctrl)
 
     c.popupMenu( parent=ctrl , altModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
@@ -396,11 +396,11 @@ def createPaneMenu( ctrl ):
     c.menuItem(  label="Save script...",
                     command="JSE.saveScript('"+ctrl+"',False)")
 
-    logger.info(" --------------------- Created Pane Menu")
+    logger.info("--------------------- Created Pane Menu")
     logger.info("")
 
 def createInputMenu( ctrl ):
-    logger.info(" Creating Input Menu --------------------")
+    logger.info("Creating Input Menu --------------------")
     logger.debug("        ctrl : %s",ctrl)
 
     c.popupMenu( parent=ctrl , shiftModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
@@ -446,7 +446,7 @@ def createExpressionMenu( ctrl ):
     c.menuItem(  label="Save script...",
                     command="JSE.saveScript('"+ctrl+"',False)")
 
-    logger.info(" --------------------- Created Expression Menu")
+    logger.info("--------------------- Created Expression Menu")
     logger.info("")
 
 def createOutput( parentPanelLayout ):
