@@ -5,7 +5,7 @@ from maya.mel import eval as melEval
 import logging
 logger = logging.getLogger("JSE")
 # Logger levels: CRITICAL ERROR WARNING INFO DEBUG NOTSET
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 '''
@@ -293,6 +293,18 @@ def deletePane(paneSection):
     logger.info("")
 
 
+def listObjAttr(objInQuestion, scrollListToOutput):
+    # If the current object is not valid then get outta here
+    try:    attrLong = c.listAttr(objInQuestion)
+    except: return
+    attrShrt = c.listAttr(objInQuestion, shortName=1)
+
+    logger.debug(" attrLong : %s",attrLong)
+    logger.debug(" attrShrt : %s",attrShrt)
+    
+    c.textScrollList( scrollListToOutput, e=1, removeAll=1)
+
+
 def saveScript(paneSection, saveAs):
     '''
     This procedure saves the current active tab's script to a file. If...
@@ -374,6 +386,7 @@ def saveScript(paneSection, saveAs):
     logger.info("---------------- Saved script")
     logger.info("")
 
+
 def createPaneMenu( ctrl ):
     logger.info("Creating Pane Menu --------------------")
     logger.debug("        ctrl : %s",ctrl)
@@ -398,6 +411,7 @@ def createPaneMenu( ctrl ):
 
     logger.info("--------------------- Created Pane Menu")
     logger.info("")
+
 
 def createInputMenu( ctrl ):
     logger.info("Creating Input Menu --------------------")
@@ -424,6 +438,7 @@ def createInputMenu( ctrl ):
     logger.debug(" --------------------- Created Input Menu")
     logger.debug("")
 
+
 def createExpressionMenu( ctrl ):
     logger.debug(" Creating Expression Menu --------------------")
     logger.debug("        ctrl : %s",ctrl)
@@ -448,6 +463,7 @@ def createExpressionMenu( ctrl ):
 
     logger.info("--------------------- Created Expression Menu")
     logger.info("")
+
 
 def createOutput( parentPanelLayout ):
     logger.info("Creating output -----------------------------------")
@@ -717,6 +733,7 @@ def saveAllTabs():
 
     logger.info("--------------------------------------- Saved All")
     logger.info("")
+
 
 def saveCurrentSettings():
     global currentInputTabType
