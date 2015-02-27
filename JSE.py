@@ -682,6 +682,8 @@ def saveAllTabs():
 
     logger.info("Saving All --------------------------------------")
     scriptEditorTempPath = c.about(preferences=1)+"/prefs/scriptEditorTemp/"
+    logger.debug("  scriptEditorTempPath : %s",scriptEditorTempPath)
+    debugGlobals()
 
     """
     Then delete the existing buffers in the temp location
