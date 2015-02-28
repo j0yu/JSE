@@ -125,6 +125,7 @@ def split( paneSection, re_assign_position="" ):
             print sections[i]
             if ("paneLayout" in sections[i]) or wrongWayRound:
                 wrongWayRound.append(sections[i])
+            if ("paneLayout" in sections[i]) and not(wrongWayRound): paneSection = sections[i+1]
         # The list of parent is correct but reversed and not in string, now we convert to final format    
         parentPaneLayout = wrongWayRound[-1]        
         for i in range(len(wrongWayRound)-2,-1,-1):
@@ -135,7 +136,7 @@ def split( paneSection, re_assign_position="" ):
         logger.debug(var1(   "child is (paneSection)",paneSection))
         logger.debug(var1(                 "(exist?)",c.control(paneSection,q=1,ex=1)) )
         
-        paneSectionShortName = re.split("\|",paneSection)[-1]
+        paneSectionShortName = re.split("\\|",paneSection)[-1]
         logger.debug(var1(              "(shortName)",paneSectionShortName ) )
         
         parentPaneLayoutChildArray = c.paneLayout( parentPaneLayout, query=True, ca=True)
@@ -248,16 +249,17 @@ def deletePane(paneSection):
     sections = re.split("\\|",paneSection)[:-1]
     # Traverse backwards to get the parent paneLayout about current control
     for i in range(len(sections)-1,-1,-1):
-        print sections[i]
         if ("paneLayout" in sections[i]) or wrongWayRound:
             wrongWayRound.append(sections[i])
+            if ("paneLayout" in sections[i]): paneSection = sections[i]
     # The list of parent is correct but reversed and not in string, now we convert to final format    
     parentPaneLayout = wrongWayRound[-1]        
     for i in range(len(wrongWayRound)-2,-1,-1):
         parentPaneLayout = parentPaneLayout + "|" + wrongWayRound[i]
 
 
-    fullPathSplit = re.split("\\|",paneSection)
+    logger.debug(var1("parentPaneLayout",parentPaneLayout))
+    logger.debug(var1("paneSection",paneSection))
 
 
 
