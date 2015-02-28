@@ -5,7 +5,7 @@ from maya.mel import eval as melEval
 import logging
 logger = logging.getLogger("JSE")
 # Logger levels: CRITICAL ERROR WARNING INFO DEBUG NOTSET
-logger.setLevel(logging.CRITICAL)
+logger.setLevel(logging.ERROR)
 
 
 '''
@@ -20,7 +20,6 @@ logger.setLevel(logging.CRITICAL)
 currentInputTabType = []   # List of tabs' languages
 currentInputTabLabels = []  # List of tabs' label/name
 currentInputTabFiles = []   # List of tabs' associated file location
-currentInputTabCode = []    # List of tabs' text buffer/the code inside it
 currentInputTabs = []       # List of cmdScrollFieldExecuters, will be in order of the tabs (left to right I presume)
 currentInputTabLayouts = [] # List of all tab layout in the various input pane sections
 
@@ -501,7 +500,7 @@ def createOutput( parentPanelLayout ):
     return output
 
 
-def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
+def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation):
     '''
         If there is no text then load from file
     '''
@@ -509,7 +508,6 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
     logger.debug(var1(    "tabUsage",tabUsage))
     logger.debug(var1(  "pTabLayout",pTabLayout))
     logger.debug(var1(    "tabLabel",tabLabel))
-    logger.debug(var1(        "text",text))
     logger.debug(var1("fileLocation",fileLocation))
     inputField = ""
 
@@ -584,15 +582,8 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
                                                 showLineNumbers=True )
         logger.debug(var1("inputField",inputField))
 
-        if fileLocation != "": c.cmdScrollFieldExecuter(inputField, e=1, loadContents=fileLocation)
-        if text != "":
-            c.cmdScrollFieldExecuter(inputField, e=1, text=text)
-            c.cmdScrollFieldExecuter(inputField, e=1, storeContents=fileLocation)
-        else:            
-            fileExt=""
-            if currentInputTabType[i] == "python": fileExt = "py"
-            else: fileExt = "mel"
-            c.cmdScrollFieldExecuter(inputField, e=1, loadContents="JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt)
+                
+        c.cmdScrollFieldExecuter(inputField, e=1, loadContents=fileLocation)
 
         # make sure the text is not selected
         c.cmdScrollFieldExecuter(inputField, e=1, select=[0,0] )
@@ -614,7 +605,6 @@ def createInput( parentUI ):
     global currentInputTabLabels
     global currentInputTabFiles
     global currentInputTabs
-    global currentInputTabCode
 
     logger.info(defStart("Creating input"))
     logger.debug(var1("parentUI",parentUI))
@@ -635,7 +625,6 @@ def createInput( parentUI ):
         currentInputTabType  = c.optionVar(q="JSE_input_tabLangs") # Get list of tabs' languages
         currentInputTabLabels = c.optionVar(q="JSE_input_tabLabels")# Get list of tabs' label/names
         currentInputTabFiles  = c.optionVar(q="JSE_input_tabFiles") # Get list of tabs' associated file addressess
-        for i in currentInputTabType: currentInputTabCode.append( "" )
 
     else: # (NO)
         logger.info("No previous JSE optionVars found, must be fresh run of JSE eh?!")
@@ -647,8 +636,14 @@ def createInput( parentUI ):
             # Here we use a workaround to get a variable from MEL (http://help.autodesk.com/cloudhelp/2015/ENU/Maya-Tech-Docs/CommandsPython/eval.html, example section)
             currentInputTabType  = melEval("$workaroundToGetVariables = $gCommandExecuterType")
             currentInputTabLabels = melEval("$workaroundToGetVariables = $gCommandExecuterName")
-            for cmdExecuter in melEval("$workaroundToGetVariables = $gCommandExecuter"):
-                currentInputTabCode.append( c.cmdScrollFieldExecuter(cmdExecuter, q=1, t=1) )
+            cmdExecutersList = melEval("$workaroundToGetVariables = $gCommandExecuter")
+            for i in xrange( len(cmdExecutersList) ):
+                if currentInputTabType[i] == "python": fileExt = "py"
+                else: fileExt = "mel"
+                logger.debug(var1("cmdExecutersList[i]",cmdExecutersList[i]) )
+                logger.debug(var1("saving to","JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt) )
+                logger.debug("\n"+c.cmdScrollFieldExecuter(cmdExecutersList[i], q=1, text=1) )
+                c.cmdScrollFieldExecuter( cmdExecutersList[i], e=1, storeContents="JSE-Tab-"+str(i)+"-"+str(currentInputTabLabels[i])+"."+str(fileExt) )
                 logger.debug(head2("appending"))
 
         else: # (NO)
@@ -674,7 +669,6 @@ def createInput( parentUI ):
     logger.debug(var1(  "currentInputTabType",currentInputTabType))
     logger.debug(var1("currentInputTabLabels",currentInputTabLabels))
     logger.debug(var1( "currentInputTabFiles",currentInputTabFiles))
-    logger.debug(var1(  "currentInputTabCode",currentInputTabCode))
 
     #=============================================================
     #= Create the tabs
@@ -686,19 +680,19 @@ def createInput( parentUI ):
         logger.critical("  currentInputTabFiles (len,value)",len(currentInputTabFiles),  currentInputTabFiles)
     else:
         logger.debug(var1("len(currentInputTabLabels)",len(currentInputTabLabels)))
-        logger.debug(var1(  "len(currentInputTabCode)",len(currentInputTabCode)))
 
         for i in xrange( len(currentInputTabLabels) ):
+            if currentInputTabType[i] == "python": fileExt = "py"
+            else: fileExt = "mel"
             currentInputTabs.append(
                 makeInputTab(   currentInputTabType[i],
                                 inputTabsLay,
                                 currentInputTabLabels[i],
-                                currentInputTabCode[i],
-                                currentInputTabFiles[i] )
+                                "JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt )
             )
 
         currentInputTabs.append(
-            makeInputTab( "expr", inputTabsLay, "test expression" )
+            makeInputTab( "expr", inputTabsLay, "test expression" , "")
         )
 
 
@@ -782,7 +776,6 @@ def syncAll():
     global currentInputTabType
     global currentInputTabLabels
     global currentInputTabFiles
-    global currentInputTabCode
     global currentInputTabs
     global currentInputTabLayouts
     global window
@@ -891,7 +884,6 @@ def debugGlobals():
     global currentInputTabType
     global currentInputTabLabels
     global currentInputTabFiles
-    global currentInputTabCode
     global currentInputTabs
     global currentInputTabLayouts
     global window
@@ -899,17 +891,26 @@ def debugGlobals():
     global engaged
 
     head1("JSE  Debug Globals")
-    print "   currentInputTabType, size :",len(currentInputTabType),"\n",currentInputTabType,"\n"
-    print " currentInputTabLabels, size :",len(currentInputTabLabels),"\n",currentInputTabLabels,"\n"
-    print "  currentInputTabFiles, size :",len(currentInputTabFiles),"\n",currentInputTabFiles,"\n"
-    print "   currentInputTabCode, size :",len(currentInputTabCode),"\n",currentInputTabCode,"\n"
-    print "      currentInputTabs, size :",len(currentInputTabs)
-    for i in currentInputTabs: print i
-    print "\ncurrentInputTabLayouts, size :",len(currentInputTabLayouts),"\n",currentInputTabLayouts,"\n"
-
-    print "                      window :\t",window
-    print "                      layout :\t",layout
-    print "                      engaged:\t",engaged
+    logger.debug("   currentInputTabType, size : %s",len(currentInputTabType))
+    logger.debug("%s",currentInputTabType)
+    logger.debug("")
+    logger.debug(" currentInputTabLabels, size : %s",len(currentInputTabLabels))
+    logger.debug("%s",currentInputTabLabels)
+    logger.debug("")
+    logger.debug("  currentInputTabFiles, size : %s",len(currentInputTabFiles))
+    logger.debug("%s",currentInputTabFiles)
+    logger.debug("")
+    logger.debug("")
+    logger.debug("      currentInputTabs, size : %s",len(currentInputTabs))
+    for i in currentInputTabs: logger.debug(i)
+    logger.debug("")
+    logger.debug("")
+    logger.debug("currentInputTabLayouts, size : %s",len(currentInputTabLayouts))
+    logger.debug("%s",currentInputTabLayouts)
+    logger.debug("")
+    logger.debug("                      window : %s",window)
+    logger.debug("                      layout : %s",layout)
+    logger.debug("                      engaged: %s",engaged)
 
 ##################################################################################################################
 
