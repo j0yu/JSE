@@ -295,14 +295,23 @@ def deletePane(paneSection):
 
 def listObjAttr(objInQuestion, scrollListToOutput):
     # If the current object is not valid then get outta here
+    logger.debug("Listing object attributes --------------------------------")
+    logger.debug("      objInQuestion : %s",objInQuestion)
+    logger.debug(" scrollListToOutput : %s",scrollListToOutput)
+    
     try:    attrLong = c.listAttr(objInQuestion)
     except: return
-    attrShrt = c.listAttr(objInQuestion, shortName=1)
+    attrShrt = c.listAttr(objInQuestion, shortNames=1)
 
     logger.debug(" attrLong : %s",attrLong)
     logger.debug(" attrShrt : %s",attrShrt)
     
+    attrTxt = []
+    for i,j in zip(attrLong,attrShrt): 
+        attrTxt.append( "{0} ({1})".format(i,j) )
+    
     c.textScrollList( scrollListToOutput, e=1, removeAll=1)
+    c.textScrollList( scrollListToOutput, e=1, append=attrTxt)
 
 
 def saveScript(paneSection, saveAs):
