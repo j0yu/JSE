@@ -118,7 +118,9 @@ def split( paneSection, re_assign_position="" ):
                                     called the split, initially initialised to paneSection
                                     in order to start the parent traversal algorithm
         '''
-        parentPaneLayout = c.control(paneSection, query=True, parent=True)
+        try: parentPaneLayout = c.control(paneSection, query=True, parent=True)
+        except: parentPaneLayout = c.layout(paneSection, query=True, parent=True)
+        logger.debug(var1(        "parentPaneLayout",parentPaneLayout))
         logger.info(head1("Traversing to get parent paneLayout"))
         while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
             paneSection = parentPaneLayout
@@ -242,7 +244,8 @@ def deletePane(paneSection):
                                     called the split, initially initialised to paneSection
                                     in order to start the parent traversal algorithm
     '''
-    parentPaneLayout = c.control(paneSection, query=True, parent=True)
+    try: parentPaneLayout = c.control(paneSection, query=True, parent=True)
+    except: parentPaneLayout = c.layout(paneSection, query=True, parent=True)
     logger.info("--------Traversing to get parent paneLayout --------")
     while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
         paneSection = parentPaneLayout
