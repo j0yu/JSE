@@ -4,8 +4,6 @@ from maya.mel import eval as melEval
 
 import logging
 logger = logging.getLogger("JSE")
-# Logger levels: CRITICAL ERROR WARNING INFO DEBUG NOTSET
-logger.setLevel(logging.ERROR)
 
 
 '''
@@ -73,7 +71,7 @@ def exprMenuChange():
     pass
 
 
-def split( paneSection, re_assign_position="" ):
+def split( paneSection, re_assign_position="", newPaneIsInput=True):
     """
     Procedure to split the current pane into 2 panes, or set up the default
     script editor panels if this is the first time it is run
@@ -180,20 +178,31 @@ def split( paneSection, re_assign_position="" ):
             newSectionPaneIndex = 1
             oldSectionPaneIndex = 2
 
-        if re_assign_position == "bottom":
+        elif re_assign_position == "bottom":
             paneConfig = 'horizontal2'
             newSectionPaneIndex = 2
             oldSectionPaneIndex = 1
 
-        if re_assign_position == "left":
+        elif re_assign_position == "left":
             paneConfig = 'vertical2'
             newSectionPaneIndex = 1
             oldSectionPaneIndex = 2
 
-        if re_assign_position == "right":
+        elif re_assign_position == "right":
             paneConfig = 'vertical2'
             newSectionPaneIndex = 2
             oldSectionPaneIndex = 1
+        
+        else: 
+            logger.critical("re_assign_position not matched with top, bottom, left or right!")
+            logger.critical(var1("re_assign_position",re_assign_position))
+            logger.critical(var1(   "== top",re_assign_position == "top"))
+            logger.critical(var1("== bottom",re_assign_position == "bottom"))
+            logger.critical(var1(  "== left",re_assign_position == "left"))
+            logger.critical(var1( "== right",re_assign_position == "right"))
+        logger.debug(var1(         "paneConfig",paneConfig ))
+        logger.debug(var1("newSectionPaneIndex",newSectionPaneIndex ))
+        logger.debug(var1("oldSectionPaneIndex",oldSectionPaneIndex ))
 
         logger.debug(head2("Setting values for new paneLayouts" ) )
         newPaneLayout =  c.paneLayout(configuration=paneConfig, parent=parentPaneLayout)
@@ -207,9 +216,13 @@ def split( paneSection, re_assign_position="" ):
 
         logger.debug(head2("Assigning new split to current pane" ) )
         c.control(paneSection, edit=True, parent=newPaneLayout)
-        c.paneLayout(newPaneLayout, edit=True,
-                     setPane=[ (createInput( newPaneLayout ) , newSectionPaneIndex),
-                               (        paneSection          , oldSectionPaneIndex) ] )
+        if newPaneIsInput:  c.paneLayout(newPaneLayout, edit=True,
+                                         setPane=[ (createInput( newPaneLayout ) , newSectionPaneIndex),
+                                                   (        paneSection          , oldSectionPaneIndex) ] )
+        else:   c.paneLayout(newPaneLayout, edit=True,
+                             setPane=[ ( createOutput(newPaneLayout) , newSectionPaneIndex),
+                                       (        paneSection          , oldSectionPaneIndex) ] )
+
 
     logger.info(defEnd("Splitted"))
     logger.info("")
@@ -410,14 +423,26 @@ def createPaneMenu( ctrl ):
     logger.debug(var1("ctrl",ctrl))
 
     c.popupMenu( parent=ctrl , altModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
-    c.menuItem(  label="Right", radialPosition="E",
+    c.menuItem(  label="New Right", radialPosition="E",
                     command="JSE.split('"+ctrl+"','right')" )
-    c.menuItem(  label="Left", radialPosition="W",
+    c.menuItem(  label="New Right", radialPosition="E", optionBox=True,
+                    command="JSE.split('"+ctrl+"','right',False)" )
+    
+    c.menuItem(  label="New Left", radialPosition="W",
                     command="JSE.split('"+ctrl+"','left')" )
-    c.menuItem(  label="Below", radialPosition="S",
+    c.menuItem(  label="New Left", radialPosition="W", optionBox=True,
+                    command="JSE.split('"+ctrl+"','left', False)" )
+
+    c.menuItem(  label="New Below", radialPosition="S",
                     command="JSE.split('"+ctrl+"','bottom')" )
-    c.menuItem(  label="Above", radialPosition="N",
+    c.menuItem(  label="New Below", radialPosition="S", optionBox=True,
+                    command="JSE.split('"+ctrl+"','bottom', False)" )
+
+    c.menuItem(  label="New Above", radialPosition="N",
                     command="JSE.split('"+ctrl+"','top')" )
+    c.menuItem(  label="New Above", radialPosition="N", optionBox=True,
+                    command="JSE.split('"+ctrl+"','top', False)" )
+
 
     c.menuItem(  label="---Pane Section Menu---", enable=False)
     c.menuItem(  label="Remove This Pane!",
@@ -640,6 +665,7 @@ def createInput( parentUI ):
                 logger.debug(var1("saving to","JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt) )
                 logger.debug("\n"+c.cmdScrollFieldExecuter(cmdExecutersList[i], q=1, text=1) )
                 c.cmdScrollFieldExecuter( cmdExecutersList[i], e=1, storeContents="JSE-Tab-"+str(i)+"-"+str(currentInputTabLabels[i])+"."+str(fileExt) )
+                c.cmdScrollFieldExecuter( cmdExecutersList[i], e=1, select=[0,0] )
                 logger.debug(head2("appending"))
 
         else: # (NO)
@@ -687,11 +713,13 @@ def createInput( parentUI ):
                                 "JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt )
             )
 
-        currentInputTabs.append(
+        currentInputTabs.append( # Append a test expression  layout for the time being
             makeInputTab( "expr", inputTabsLay, "test expression" , "")
         )
 
-
+    ''' Now this should be a text base interface for using the scipt editor, much like the command mode of vim #
+        Right now this is disabled so I can focus on more imprtant stuff
+    '''
     inputCmdLine = c.textField(parent= inputLayout, manage=False)
 
     c.formLayout(inputLayout, edit=True,
@@ -911,20 +939,28 @@ def debugGlobals():
 ##################################################################################################################
 
 
-def run(dockable):
+def run(dockable, loggingLevel=logging.ERROR):
     global currentInputTabLayouts
     global window
     global layout
     global engaged
+    
+    # Logger levels: CRITICAL ERROR WARNING INFO DEBUG NOTSET
+    logger.setLevel(loggingLevel)
 
     logger.info("")
     logger.info(head1("JSE called"))
+    debugGlobals()
 
     #---- Setup ----
     window = c.window(title="JSE", width=950, height=650)
 
-    currentInputTabLayouts.append( c.paneLayout() )
-    newPaneLayout = split( currentInputTabLayouts[-1] )
+    # currentInputTabLayouts.append( c.paneLayout() )
+    # newPaneLayout = split( currentInputTabLayouts[-1] )
+    newPaneLayout = split( c.paneLayout() )
+
+    engaged = True
+    saveAllTabs()
 
     if dockable:
         c.dockControl("JSE",area='left',floating=True,content=window)
@@ -934,8 +970,8 @@ def run(dockable):
         logger.info(head1("Standard JSE created" ))
     logger.info("")
 
-    engaged = True
-    saveAllTabs()
+
+
 
 # End of script, if you want to to run it from just import
 # run(0)
