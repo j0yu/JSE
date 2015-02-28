@@ -5,7 +5,7 @@ from maya.mel import eval as melEval
 import logging
 logger = logging.getLogger("JSE")
 # Logger levels: CRITICAL ERROR WARNING INFO DEBUG NOTSET
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.CRITICAL)
 
 
 '''
@@ -41,6 +41,12 @@ showTooltipHelp
 
 
 '''
+# Procedure to save up retyping the same debug text formatting
+def defStart(text): return "{:=<80}".format(str(text)+" ")
+def defEnd(text): return "{:=>80}".format(" "+str(text))
+def head1(text): return "{:=^80}".format(" "+str(text)+" ")
+def head2(text): return "{:-^80}".format(" "+str(text)+" ")
+def var1(inText,inVar): return "{:>30} -- {!s}".format(str(inText) , str(inVar) )
 
 
 def exprMenuChange():
@@ -81,9 +87,9 @@ def split( paneSection, re_assign_position="" ):
                            "top"
     """
     global currentInputTabLayouts
-    logger.info("Splitting --------------------")
-    logger.debug("        paneSection : %s",paneSection)
-    logger.debug(" re_assign_position : %s",re_assign_position)
+    logger.info(defStart("Splitting"))
+    logger.debug(var1("paneSection",paneSection) )
+    logger.debug(var1("re_assign_position",re_assign_position) )
     if re_assign_position == "":
         '''
             If just initialising    --- Create new vertical 2 pane layout
@@ -93,12 +99,12 @@ def split( paneSection, re_assign_position="" ):
                                         snap it to the window's edges
         '''
         newPaneLayout = c.paneLayout(configuration='vertical2',parent=paneSection)
-        logger.debug("newPaneLayout : %s",newPaneLayout)
+        logger.debug(var1("newPaneLayout",newPaneLayout) )
         c.paneLayout(newPaneLayout, edit=True,
                      setPane=[ (createOutput( newPaneLayout ) , 1),
                                (createInput(  newPaneLayout ) , 2) ] )
 
-        logger.info("Created default split for intialisation/first run of JSE")
+        logger.info(head2("Created default split for intialisation/first run of JSE"))
         return newPaneLayout
     else:
         ''' --- FIRST ---
@@ -114,23 +120,26 @@ def split( paneSection, re_assign_position="" ):
                                     in order to start the parent traversal algorithm
         '''
         parentPaneLayout = c.control(paneSection, query=True, parent=True)
-        logger.info("--------Traversing to get parent paneLayout --------")
+        logger.info(head1("Traversing to get parent paneLayout"))
         while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
             paneSection = parentPaneLayout
-            logger.debug("parentPaneLayout was ----- %s",parentPaneLayout)
-            logger.debug("     paneSection becomes - %s",paneSection)
+            logger.debug(var1(        "parentPaneLayout",parentPaneLayout))
+            logger.debug(var1(      "paneSection become",paneSection))
             parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
-            logger.debug("parentPaneLayout becomes - %s",parentPaneLayout)
+            logger.debug(var1("parentPaneLayout becomes",parentPaneLayout))
 
 
-        logger.debug("--------------- After traversal debug --------------------")
-        logger.debug("parent paneLayout is ----- %s",parentPaneLayout )
-        logger.debug("           child is ------ %s --- %s",paneSection,c.control(paneSection,q=1,ex=1) )
+        logger.debug(head2("After traversal debug"))
+        logger.debug(var1(     "parent paneLayout is",parentPaneLayout ) )
+        logger.debug(var1(   "child is (paneSection)",paneSection))
+        logger.debug(var1(                 "(exist?)",c.control(paneSection,q=1,ex=1)) )
+        
         paneSectionShortName = re.split("\|",paneSection)[-1]
-        logger.debug("           (short)  ------ %s",paneSectionShortName )
+        logger.debug(var1(              "(shortName)",paneSectionShortName ) )
+        
         parentPaneLayoutChildArray = c.paneLayout( parentPaneLayout, query=True, ca=True)
-        logger.debug("parentPaneLayout children- %s",parentPaneLayoutChildArray )
-        logger.debug("       child index number- %s",parentPaneLayoutChildArray.index(paneSectionShortName) )
+        logger.debug(var1("parentPaneLayout children",parentPaneLayoutChildArray ))
+        logger.debug(var1(       "child index number",parentPaneLayoutChildArray.index(paneSectionShortName) ))
 
 
         ''' --- SECOND ---
@@ -186,23 +195,23 @@ def split( paneSection, re_assign_position="" ):
             newSectionPaneIndex = 2
             oldSectionPaneIndex = 1
 
-        logger.info("-------- Setting values for new paneLayouts -------- " )
+        logger.debug(head2("Setting values for new paneLayouts" ) )
         newPaneLayout =  c.paneLayout(configuration=paneConfig, parent=parentPaneLayout)
 
-        logger.debug( "     parentPaneLayout : %s",parentPaneLayout )
-        logger.debug( "          paneSection : %s",paneSection )
-        logger.debug( "        newPaneLayout : %s",newPaneLayout )
-        logger.debug( "paneLayout exist test : %s",c.paneLayout(newPaneLayout, q=1,ex=1) )
+        logger.debug(var1("parentPaneLayout",parentPaneLayout ))
+        logger.debug(var1(     "paneSection",paneSection ))
+        logger.debug(var1(   "newPaneLayout",newPaneLayout ))
+        logger.debug(var1(        "(exist?)",c.paneLayout(newPaneLayout, q=1,ex=1) ) )
         c.paneLayout(parentPaneLayout, edit=True,
                      setPane=[( newPaneLayout, paneSectionNumber )]  )
 
-        logger.debug( "assigning new split to current pane................." )
+        logger.debug(head2("Assigning new split to current pane" ) )
         c.control(paneSection, edit=True, parent=newPaneLayout)
         c.paneLayout(newPaneLayout, edit=True,
                      setPane=[ (createInput( newPaneLayout ) , newSectionPaneIndex),
                                (        paneSection          , oldSectionPaneIndex) ] )
 
-    logger.info("--------------------- Splitted")
+    logger.info(defEnd("Splitted"))
     logger.info("")
 
 
@@ -219,8 +228,8 @@ def deletePane(paneSection):
     5 --- Re-parent other section --> grand parent layout, same section number as parent layout
     6 --- Delete parent layout, which also deletes the current section (parent layout's child)
     '''
-    logger.info(" Deleting Pane --------------------")
-    logger.debug("        paneSection : %s",paneSection)
+    logger.info(defStart("Deleting Pane"))
+    logger.debug(var1("paneSection",paneSection))
 
     ''' --- FIRST ---
             Find the paneLayout above the current control/layout.
@@ -233,22 +242,22 @@ def deletePane(paneSection):
             parentPaneLayout    :   paneLayout that is the parent of the pane that
                                     called the split, initially initialised to paneSection
                                     in order to start the parent traversal algorithm
-        '''
+    '''
     parentPaneLayout = c.control(paneSection, query=True, parent=True)
     logger.info("--------Traversing to get parent paneLayout --------")
     while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
         paneSection = parentPaneLayout
-        logger.debug("parentPaneLayout was ----- %s",parentPaneLayout)
-        logger.debug("     paneSection becomes - %s",paneSection)
+        logger.debug(var1(    "parentPaneLayout was",parentPaneLayout))
+        logger.debug(var1(     "paneSection becomes",paneSection))
         parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
-        logger.debug("parentPaneLayout becomes - %s",parentPaneLayout)
+        logger.debug(var1("parentPaneLayout becomes",parentPaneLayout))
 
     parentPaneLayout = paneSection
     while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
         paneSection = parentPaneLayout
         parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
-        logger.debug("      paneSection becomes : %s",paneSection)
-        logger.debug(" parentPaneLayout becomes : %s",parentPaneLayout)
+        logger.debug(var1(     "paneSection becomes",paneSection))
+        logger.debug(var1("parentPaneLayout becomes",parentPaneLayout))
 
     ''' --- SECOND ---
             Figure out which indices the various children of the different pane layouts
@@ -256,29 +265,29 @@ def deletePane(paneSection):
 
     '''
     parentPaneLayoutChildren        = c.paneLayout( parentPaneLayout, query=True, childArray=True)
-    logger.debug("      parentPaneLayoutChildren : %s",parentPaneLayoutChildren)
+    logger.debug(var1(     "parentPaneLayoutChildren",parentPaneLayoutChildren))
 
     grandParentPaneLayout           = c.paneLayout( parentPaneLayout, query=True, parent=True)
-    logger.debug("         grandParentPaneLayout : %s",grandParentPaneLayout)
+    logger.debug(var1(        "grandParentPaneLayout",grandParentPaneLayout))
 
     grandParentPaneLayoutChildren   = c.paneLayout( grandParentPaneLayout, query=True, childArray=True)
-    logger.debug(" grandParentPaneLayoutChildren : %s",grandParentPaneLayoutChildren)
+    logger.debug(var1("grandParentPaneLayoutChildren",grandParentPaneLayoutChildren))
 
     paneSectionShortName        = re.split("\|",paneSection)[-1] # strip the short name from the full name
-    logger.debug("          paneSectionShortName : %s",paneSectionShortName)
+    logger.debug(var1(         "paneSectionShortName",paneSectionShortName))
 
     parentPaneLayoutShortName   = re.split("\|",parentPaneLayout)[-1] # strip the short name from the full name
-    logger.debug("     parentPaneLayoutShortName : %s",parentPaneLayoutShortName)
+    logger.debug(var1(    "parentPaneLayoutShortName",parentPaneLayoutShortName))
 
 
     parentPaneLayoutSectionNumber   = grandParentPaneLayoutChildren.index(parentPaneLayoutShortName)+1
-    logger.debug(" parentPaneLayoutSectionNumber : %s",parentPaneLayoutSectionNumber)
+    logger.debug(var1("parentPaneLayoutSectionNumber",parentPaneLayoutSectionNumber))
 
     otherPaneChildNum           = ( parentPaneLayoutChildren.index(paneSectionShortName)+1 ) % 2
-    logger.debug("             otherPaneChildNum : %s",otherPaneChildNum)
+    logger.debug(var1(            "otherPaneChildNum",otherPaneChildNum))
 
     otherParentPaneSectionNum   = (parentPaneLayoutSectionNumber % 2) + 1
-    logger.debug("     otherParentPaneSectionNum : %s",otherParentPaneSectionNum)
+    logger.debug(var1(    "otherParentPaneSectionNum",otherParentPaneSectionNum))
 
     ''' --- FINALLY ---
             Re-parenting and assigning the control to the grand parent layout
@@ -289,30 +298,35 @@ def deletePane(paneSection):
                     setPane=[ parentPaneLayoutChildren[otherPaneChildNum], parentPaneLayoutSectionNumber ])
     # c.deleteUI( parentPaneLayout ) # Segmentation fault causer in 2014 SP2 Linux
 
-    logger.info(" --------------------- Deleted Pane")
+    logger.info(defEnd("Deleted Pane") )
     logger.info("")
 
 
-def listObjAttr(objInQuestion, scrollListToOutput):
+def listObjAttr(objTextField, scrollListToOutput):
     # If the current object is not valid then get outta here
-    logger.debug("Listing object attributes --------------------------------")
-    logger.debug("      objInQuestion : %s",objInQuestion)
-    logger.debug(" scrollListToOutput : %s",scrollListToOutput)
+    logger.debug(defStart("Listing object attributes") )
+    logger.debug(var1(      "objTextField",objTextField))
+    logger.debug(var1("scrollListToOutput",scrollListToOutput))
+
+    c.textScrollList( scrollListToOutput, e=1, removeAll=1)
+    objInQuestion = c.textFieldGrp( objTextField, q=1, text=1)
+    logger.debug(var1(     "objInQuestion",objInQuestion))
     
     try:    attrLong = c.listAttr(objInQuestion)
-    except: return
+    except: 
+        c.textScrollList( scrollListToOutput, e=1, append=["--NOTHING FOUND--"], enable=False)
+        return
     attrShrt = c.listAttr(objInQuestion, shortNames=1)
 
-    logger.debug(" attrLong : %s",attrLong)
-    logger.debug(" attrShrt : %s",attrShrt)
+    logger.debug(var1(          "attrLong",attrLong))
+    logger.debug(var1(          "attrShrt",attrShrt))
     
     attrTxt = []
     for i,j in zip(attrLong,attrShrt): 
         attrTxt.append( "{0} ({1})".format(i,j) )
     
-    c.textScrollList( scrollListToOutput, e=1, removeAll=1)
-    c.textScrollList( scrollListToOutput, e=1, append=attrTxt)
-
+    c.textScrollList( scrollListToOutput, e=1, append=attrTxt, enable=True)
+    logger.debug(defEnd("Listed object attributes") )
 
 def saveScript(paneSection, saveAs):
     '''
@@ -337,16 +351,16 @@ def saveScript(paneSection, saveAs):
     5 --- Re-parent other section --> grand parent layout, same section number as parent layout
     6 --- Delete parent layout, which also deletes the current section (parent layout's child)
     '''
-    logger.info("Saving script ---------------")
-    logger.debug("       paneSection : %s",paneSection)
-    logger.debug("            saveAs : %s",saveAs)
-    logger.debug("          executer : %s",c.cmdScrollFieldExecuter( paneSection, q=1, ex=1) )
-    logger.debug("          reporter : %s",c.cmdScrollFieldReporter( paneSection, q=1, ex=1) )
+    logger.info(defStart("Saving script"))
+    logger.debug(var1("paneSection",paneSection))
+    logger.debug(var1(     "saveAs",saveAs))
+    logger.debug(var1(   "executer",c.cmdScrollFieldExecuter( paneSection, q=1, ex=1) ))
+    logger.debug(var1(   "reporter",c.cmdScrollFieldReporter( paneSection, q=1, ex=1) ))
 
     if c.cmdScrollFieldReporter( paneSection, q=1, ex=1):
-        logger.debug( "line numbering was..%s",c.cmdScrollFieldReporter( paneSection, q=1, ln=1) )
+        logger.debug(var1("line numbering was",c.cmdScrollFieldReporter( paneSection, q=1, ln=1) ))
         c.cmdScrollFieldReporter( paneSection, e=1, ln=0)
-        logger.debug( "line numbering is...%s",c.cmdScrollFieldReporter( paneSection, q=1, ln=1) )
+        logger.debug(var1( "line numbering is",c.cmdScrollFieldReporter( paneSection, q=1, ln=1) ))
 
     ''' --- FIRST ---
             Find the paneLayout above the current control/layout.
@@ -392,13 +406,13 @@ def saveScript(paneSection, saveAs):
 
     '''
 
-    logger.info("---------------- Saved script")
+    logger.info(defEnd("Saved script"))
     logger.info("")
 
 
 def createPaneMenu( ctrl ):
-    logger.info("Creating Pane Menu --------------------")
-    logger.debug("        ctrl : %s",ctrl)
+    logger.debug(defStart("Creating Pane Menu"))
+    logger.debug(var1("ctrl",ctrl))
 
     c.popupMenu( parent=ctrl , altModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
     c.menuItem(  label="Right", radialPosition="E",
@@ -418,13 +432,13 @@ def createPaneMenu( ctrl ):
     c.menuItem(  label="Save script...",
                     command="JSE.saveScript('"+ctrl+"',False)")
 
-    logger.info("--------------------- Created Pane Menu")
-    logger.info("")
+    logger.debug(defEnd("Created Pane Menu"))
+    logger.debug("")
 
 
 def createInputMenu( ctrl ):
-    logger.info("Creating Input Menu --------------------")
-    logger.debug("        ctrl : %s",ctrl)
+    logger.debug(defStart("Creating Input Menu"))
+    logger.debug(var1("ctrl",ctrl))
 
     c.popupMenu( parent=ctrl , shiftModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
     c.menuItem(  label="Create Python", radialPosition="E",
@@ -444,13 +458,13 @@ def createInputMenu( ctrl ):
     c.menuItem(  label="Save script...",
                     command="JSE.saveScript('"+ctrl+"',False)")
 
-    logger.debug(" --------------------- Created Input Menu")
+    logger.debug(defEnd("Created Input Menu"))
     logger.debug("")
 
 
 def createExpressionMenu( ctrl ):
-    logger.debug(" Creating Expression Menu --------------------")
-    logger.debug("        ctrl : %s",ctrl)
+    logger.debug(defStart("Creating Expression Menu"))
+    logger.debug(var1("ctrl",ctrl))
 
     c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
     c.menuItem(  label="Right", radialPosition="E",
@@ -470,17 +484,19 @@ def createExpressionMenu( ctrl ):
     c.menuItem(  label="Save script...",
                     command="JSE.saveScript('"+ctrl+"',False)")
 
-    logger.info("--------------------- Created Expression Menu")
-    logger.info("")
+    logger.debug(defEnd("Created Expression Menu"))
+    logger.debug("")
 
 
 def createOutput( parentPanelLayout ):
-    logger.info("Creating output -----------------------------------")
-    logger.debug("      parentPanelLayout : %s",parentPanelLayout)
+    logger.info(defStart("Creating output"))
+    logger.debug(var1("parentPanelLayout",parentPanelLayout))
+    
     output = c.cmdScrollFieldReporter(parent = parentPanelLayout, backgroundColor=[0.1,0.1,0.1] )
+    logger.debug(var1("output",output))
+    
     createPaneMenu( output )
-    logger.debug("                 output : %s",parentPanelLayout)
-    logger.info("----------------------------------- Created output!")
+    logger.info(defEnd("Created output!"))
     logger.info("")
     return output
 
@@ -489,22 +505,22 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
     '''
         If there is no text then load from file
     '''
-    logger.info("Making input tab -----------------------------------")
-    logger.debug("          tabUsage : %s",tabUsage)
-    logger.debug("        pTabLayout : %s",pTabLayout)
-    logger.debug("          tabLabel : %s",tabLabel)
-    logger.debug("              text : %s",text)
-    logger.debug("      fileLocation : %s",fileLocation)
+    logger.info(defStart("Making input tab"))
+    logger.debug(var1(    "tabUsage",tabUsage))
+    logger.debug(var1(  "pTabLayout",pTabLayout))
+    logger.debug(var1(    "tabLabel",tabLabel))
+    logger.debug(var1(        "text",text))
+    logger.debug(var1("fileLocation",fileLocation))
     inputField = ""
 
     if tabUsage == "mel"     : bkgndColour = [0.16, 0.16, 0.16]
     if tabUsage == "expr"    : bkgndColour = [0.16, 0.13, 0.13]
     if tabUsage == "python"  : bkgndColour = [0.12, 0.14, 0.15]
-    logger.debug("       bkgndColour : %s",bkgndColour)
+    logger.debug(var1( "bkgndColour",bkgndColour))
 
     if tabUsage == "python"  : tabLang = "python"
     else                     : tabLang = "mel"
-    logger.debug("           tabLang : %s",tabLang)
+    logger.debug(var1(     "tabLang",tabLang))
 
 
     if tabUsage == "expr":
@@ -530,7 +546,7 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
                                                 parent=exprForm,
 
                                                 showLineNumbers=True )
-        logger.debug("        inputField : %s",inputField)
+        logger.debug(var1("inputField",inputField))
 
         c.formLayout(exprForm, e=1, attachForm=([angleOption, "top", 0],
                                                 [evalOption,  "top", 0],
@@ -547,8 +563,10 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
         #========================================================================================================
         attrForm = c.formLayout( parent = exprPanelayout)
         #--------------------------------------------------------
-        objSearchField  = c.textField( parent = attrForm, placeholderText="Search obj for attr", w=120 )
-        attrList   = c.textScrollList( parent = attrForm )
+        objSearchField  = c.textFieldGrp( parent = attrForm, placeholderText="Search obj for attr", w=120 )
+        attrList   = c.textScrollList( parent = attrForm, append=["--NOTHING FOUND--"], enable=False )
+        c.textFieldGrp( objSearchField, e=1, textChangedCommand="JSE.listObjAttr('"+objSearchField+"','"+attrList+"')" )
+        logger.debug(var1("textChangedCommand","JSE.listObjAttr('"+objSearchField+"','"+attrList+"')"))
         c.formLayout(attrForm, e=1, attachForm=([objSearchField, "top", 0],
                                                 [objSearchField, "left", 0],
                                                 [objSearchField, "right", 0],
@@ -564,12 +582,17 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
                                                 parent=pTabLayout,
 
                                                 showLineNumbers=True )
-        logger.debug("        inputField : %s",inputField)
+        logger.debug(var1("inputField",inputField))
 
         if fileLocation != "": c.cmdScrollFieldExecuter(inputField, e=1, loadContents=fileLocation)
-        if text != ""        :
+        if text != "":
             c.cmdScrollFieldExecuter(inputField, e=1, text=text)
             c.cmdScrollFieldExecuter(inputField, e=1, storeContents=fileLocation)
+        else:            
+            fileExt=""
+            if currentInputTabType[i] == "python": fileExt = "py"
+            else: fileExt = "mel"
+            c.cmdScrollFieldExecuter(inputField, e=1, loadContents="JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt)
 
         # make sure the text is not selected
         c.cmdScrollFieldExecuter(inputField, e=1, select=[0,0] )
@@ -582,7 +605,7 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, text="", fileLocation=""):
 
 
 
-    logger.info("------------------------------------- Made input tab")
+    logger.info(defEnd("Made input tab"))
     return inputField
 
 
@@ -593,14 +616,14 @@ def createInput( parentUI ):
     global currentInputTabs
     global currentInputTabCode
 
-    logger.info("Creating input -----------------------------------")
-    logger.debug("         parentUI : %s",parentUI)
+    logger.info(defStart("Creating input"))
+    logger.debug(var1("parentUI",parentUI))
 
     inputLayout = c.formLayout(parent = parentUI) # formLayout that will hold all the tabs and command line text field
     inputTabsLay = c.tabLayout() # tabLayout that will hold all the input tab buffers
 
-    logger.debug("      inputLayout : %s",inputLayout)
-    logger.debug("     inputTabsLay : %s",inputTabsLay )
+    logger.debug(var1("inputLayout",inputLayout))
+    logger.debug(var1("inputTabsLay",inputTabsLay ))
 
     #==========================================================================================================================
     #= See if previous JSE Tab settings exist, otherwise hijack Maya's current ones
@@ -626,7 +649,7 @@ def createInput( parentUI ):
             currentInputTabLabels = melEval("$workaroundToGetVariables = $gCommandExecuterName")
             for cmdExecuter in melEval("$workaroundToGetVariables = $gCommandExecuter"):
                 currentInputTabCode.append( c.cmdScrollFieldExecuter(cmdExecuter, q=1, t=1) )
-                logger.debug( "appending" )
+                logger.debug(head2("appending"))
 
         else: # (NO)
             logger.critical( "=== Maya's own script editor, wasn't used!! NUTS! THIS SHOULD NOT BE HAPPENING ===" )
@@ -648,22 +671,23 @@ def createInput( parentUI ):
 
 
 
-    logger.debug("   currentInputTabType : %s",currentInputTabType)
-    logger.debug(" currentInputTabLabels : %s",currentInputTabLabels)
-    logger.debug("  currentInputTabFiles : %s",currentInputTabFiles)
-    logger.debug("   currentInputTabCode : %s",currentInputTabCode)
+    logger.debug(var1(  "currentInputTabType",currentInputTabType))
+    logger.debug(var1("currentInputTabLabels",currentInputTabLabels))
+    logger.debug(var1( "currentInputTabFiles",currentInputTabFiles))
+    logger.debug(var1(  "currentInputTabCode",currentInputTabCode))
 
     #=============================================================
     #= Create the tabs
     #=============================================================
     if len(currentInputTabType) != len(currentInputTabLabels):
         logger.critical("You're fucked!, len(currentInputTabType) should euqal len(currentInputTabLabels)")
-        logger.critical("   currentInputTabType (len,value): %s %s",len(currentInputTabType) ,  currentInputTabType)
-        logger.critical(" currentInputTabLabels (len,value): %s %s",len(currentInputTabLabels), currentInputTabLabels)
-        logger.critical("  currentInputTabFiles (len,value): %s %s",len(currentInputTabFiles),  currentInputTabFiles)
+        logger.critical("   currentInputTabType (len,value)",len(currentInputTabType) ,  currentInputTabType)
+        logger.critical(" currentInputTabLabels (len,value)",len(currentInputTabLabels), currentInputTabLabels)
+        logger.critical("  currentInputTabFiles (len,value)",len(currentInputTabFiles),  currentInputTabFiles)
     else:
-        logger.debug("  len(currentInputTabLabels) : %s",len(currentInputTabLabels))
-        logger.debug("    len(currentInputTabCode) : %s",len(currentInputTabCode))
+        logger.debug(var1("len(currentInputTabLabels)",len(currentInputTabLabels)))
+        logger.debug(var1(  "len(currentInputTabCode)",len(currentInputTabCode)))
+
         for i in xrange( len(currentInputTabLabels) ):
             currentInputTabs.append(
                 makeInputTab(   currentInputTabType[i],
@@ -693,7 +717,7 @@ def createInput( parentUI ):
                  # Snap the bottom of the tabLayout to the top of cmdLine
 
 
-    logger.info("------------------------------------ Created input")
+    logger.info(defEnd("Created input"))
     logger.info("")
 
     return inputLayout
@@ -705,9 +729,9 @@ def saveAllTabs():
     global currentInputTabFiles
     global currentInputTabs
 
-    logger.info("Saving All --------------------------------------")
+    logger.info(defStart("Saving All"))
     scriptEditorTempPath = c.about(preferences=1)+"/prefs/scriptEditorTemp/"
-    logger.debug("  scriptEditorTempPath : %s",scriptEditorTempPath)
+    logger.debug(var1("scriptEditorTempPath",scriptEditorTempPath))
     debugGlobals()
 
     """
@@ -740,7 +764,7 @@ def saveAllTabs():
         # make sure the text is not selected
         c.cmdScrollFieldExecuter(currentInputTabs[i], e=1, select=[0,0] )
 
-    logger.info("--------------------------------------- Saved All")
+    logger.info(defEnd("Saved All"))
     logger.info("")
 
 
@@ -765,10 +789,14 @@ def syncAll():
     global layout
 
 
-    '''---- To Do ----
-    [ ]
+    c.optionVar(stringValueAppend=["JSE_input_tabLangs" ,i])
+    c.optionVar(stringValueAppend=["JSE_input_tabLabels",i])
+    c.optionVar(stringValueAppend=["JSE_input_tabFiles" ,i])
 
-    '''
+    for i in currentInputTabType : c.optionVar(stringValueAppend=["JSE_input_tabLangs" ,i])
+    for i in currentInputTabLabels: c.optionVar(stringValueAppend=["JSE_input_tabLabels",i])
+    for i in currentInputTabFiles : c.optionVar(stringValueAppend=["JSE_input_tabFiles" ,i])
+
 
 
 def wipeOptionVars():
@@ -780,7 +808,7 @@ def wipeOptionVars():
 
 
 def layoutJSE():
-    logger.info("Layout JSE ---------------------------------------")
+    logger.info(defStart("Layout JSE"))
     def recursiveLayoutTraverse(JSELayout, layerNum):
         layoutChildArray = c.layout(JSELayout, q=1, ca=1)
         if layoutChildArray:
@@ -797,7 +825,7 @@ def layoutJSE():
 
     recursiveLayoutTraverse(layout, 0)
 
-    logger.info("--------------------------------------- Layout JSE")
+    logger.info(defEnd("Layout JSE"))
     logger.info("")
     ''' EXAMPLE OUTPUT
     paneLayout38
@@ -870,21 +898,18 @@ def debugGlobals():
     global layout
     global engaged
 
-    print "========================================================================================"
-    print "===================         JSE  Debug Globals              ============================"
-    print "========================================================================================"
-
-    print "currentInputTabType, size :",len(currentInputTabType),"\n",currentInputTabType,"\n"
-    print "currentInputTabLabels, size :",len(currentInputTabLabels),"\n",currentInputTabLabels,"\n"
-    print "currentInputTabFiles, size :",len(currentInputTabFiles),"\n",currentInputTabFiles,"\n"
-    print "currentInputTabCode, size :",len(currentInputTabCode),"\n",currentInputTabCode,"\n"
-    print "currentInputTabs, size :",len(currentInputTabs),"\n"
+    head1("JSE  Debug Globals")
+    print "   currentInputTabType, size :",len(currentInputTabType),"\n",currentInputTabType,"\n"
+    print " currentInputTabLabels, size :",len(currentInputTabLabels),"\n",currentInputTabLabels,"\n"
+    print "  currentInputTabFiles, size :",len(currentInputTabFiles),"\n",currentInputTabFiles,"\n"
+    print "   currentInputTabCode, size :",len(currentInputTabCode),"\n",currentInputTabCode,"\n"
+    print "      currentInputTabs, size :",len(currentInputTabs)
     for i in currentInputTabs: print i
     print "\ncurrentInputTabLayouts, size :",len(currentInputTabLayouts),"\n",currentInputTabLayouts,"\n"
 
-    print "window :\t",window
-    print "layout :\t",layout
-    print "engaged:\t",engaged
+    print "                      window :\t",window
+    print "                      layout :\t",layout
+    print "                      engaged:\t",engaged
 
 ##################################################################################################################
 
@@ -896,7 +921,7 @@ def run(dockable):
     global engaged
 
     logger.info("")
-    logger.info("JSE called ------------------")
+    logger.info(head1("JSE called"))
 
     #---- Setup ----
     window = c.window(title="JSE", width=950, height=650)
@@ -906,10 +931,10 @@ def run(dockable):
 
     if dockable:
         c.dockControl("JSE",area='left',floating=True,content=window)
-        logger.info( "Dockable JSE created ------------------" )
+        logger.info(head1("Dockable JSE created" ))
     else:
         c.showWindow(window)
-        logger.info( "Standard JSE created ------------------" )
+        logger.info(head1("Standard JSE created" ))
     logger.info("")
 
     engaged = True
