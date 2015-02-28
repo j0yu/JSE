@@ -118,15 +118,17 @@ def split( paneSection, re_assign_position="" ):
                                     called the split, initially initialised to paneSection
                                     in order to start the parent traversal algorithm
         '''
-        parentPaneLayout = c.control(paneSection, query=True, parent=True)
-        logger.info(head1("Traversing to get parent paneLayout"))
-        while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
-            paneSection = parentPaneLayout
-            logger.debug(var1(        "parentPaneLayout",parentPaneLayout))
-            logger.debug(var1(      "paneSection become",paneSection))
-            parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
-            logger.debug(var1("parentPaneLayout becomes",parentPaneLayout))
-
+        wrongWayRound = []
+        sections = re.split("\\|",paneSection)[:-1]
+        # Traverse backwards to get the parent paneLayout about current control
+        for i in range(len(sections)-1,-1,-1):
+            print sections[i]
+            if ("paneLayout" in sections[i]) or wrongWayRound:
+                wrongWayRound.append(sections[i])
+        # The list of parent is correct but reversed and not in string, now we convert to final format    
+        parentPaneLayout = wrongWayRound[-1]        
+        for i in range(len(wrongWayRound)-2,-1,-1):
+            parentPaneLayout = parentPaneLayout + "|" + wrongWayRound[i]
 
         logger.debug(head2("After traversal debug"))
         logger.debug(var1(     "parent paneLayout is",parentPaneLayout ) )
@@ -241,22 +243,23 @@ def deletePane(paneSection):
             parentPaneLayout    :   paneLayout that is the parent of the pane that
                                     called the split, initially initialised to paneSection
                                     in order to start the parent traversal algorithm
-    '''
-    parentPaneLayout = c.control(paneSection, query=True, parent=True)
-    logger.info("--------Traversing to get parent paneLayout --------")
-    while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
-        paneSection = parentPaneLayout
-        logger.debug(var1(    "parentPaneLayout was",parentPaneLayout))
-        logger.debug(var1(     "paneSection becomes",paneSection))
-        parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
-        logger.debug(var1("parentPaneLayout becomes",parentPaneLayout))
+    '''    
+    wrongWayRound = []
+    sections = re.split("\\|",paneSection)[:-1]
+    # Traverse backwards to get the parent paneLayout about current control
+    for i in range(len(sections)-1,-1,-1):
+        print sections[i]
+        if ("paneLayout" in sections[i]) or wrongWayRound:
+            wrongWayRound.append(sections[i])
+    # The list of parent is correct but reversed and not in string, now we convert to final format    
+    parentPaneLayout = wrongWayRound[-1]        
+    for i in range(len(wrongWayRound)-2,-1,-1):
+        parentPaneLayout = parentPaneLayout + "|" + wrongWayRound[i]
 
-    parentPaneLayout = paneSection
-    while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
-        paneSection = parentPaneLayout
-        parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
-        logger.debug(var1(     "paneSection becomes",paneSection))
-        logger.debug(var1("parentPaneLayout becomes",parentPaneLayout))
+
+    fullPathSplit = re.split("\\|",paneSection)
+
+
 
     ''' --- SECOND ---
             Figure out which indices the various children of the different pane layouts
