@@ -71,13 +71,18 @@ def exprMenuChange():
     pass
 
 
-def split( paneSection, re_assign_position="", newPaneIsInput=True):
+def split( paneSection, re_assign_position=(0,1,1), newPaneIsInput=True):
     """
     Procedure to split the current pane into 2 panes, or set up the default
     script editor panels if this is the first time it is run
 
 
-    re_assign_position:       "",  Only for initial creation, creates new default split pane, otherwise...
+    re_assign_position:    (0,1),  Internal use e.g. for initial creation, creates a set split pane, 
+                                   where:
+                                   [0] and [1] : 0 is for 0utput and 1 for 1nput (see what I did there)
+                                                 and which one of the 2 pane it will correspond to (in order)
+                                           [2] : 1 for vertical split and 0 for horizontal split
+                                   otherwise...
                         "bottom",  New pane position for existing pane, which will then be
                           "left",  used to figure out the pane number for setPane flag and
                          "right",  horizontal/vertical for configuration flag for c.paneLayout()
@@ -87,19 +92,29 @@ def split( paneSection, re_assign_position="", newPaneIsInput=True):
     logger.info(defStart("Splitting"))
     logger.debug(var1("paneSection",paneSection) )
     logger.debug(var1("re_assign_position",re_assign_position) )
-    if re_assign_position == "":
+    if type(re_assign_position) == tuple:
         '''
             If just initialising    --- Create new vertical 2 pane layout
                                     --- Create output and input pane and assign
                                         it to the new pane layout
                                     --- Return the pane layout so formLayout can
                                         snap it to the window's edges
+
         '''
         newPaneLayout = c.paneLayout(configuration='vertical2',parent=paneSection)
+        if re_assign_position[0] : paneChild1 = createInput(  newPaneLayout )
+        else                     : paneChild1 = createOutput( newPaneLayout )
+
+        if re_assign_position[1] : paneChild2 = createInput(  newPaneLayout )
+        else                     : paneChild2 = createOutput( newPaneLayout )
+        
+        if re_assign_position[2] : paneConfig = 'vertical2'
+        else                     : paneConfig = 'horizontal2'
+        
         logger.debug(var1("newPaneLayout",newPaneLayout) )
         c.paneLayout(newPaneLayout, edit=True,
-                     setPane=[ (createOutput( newPaneLayout ) , 1),
-                               (createInput(  newPaneLayout ) , 2) ] )
+                     setPane=[ (paneChild1 , 1),
+                               (paneChild2 , 2) ] )
 
         logger.info(head2("Created default split for intialisation/first run of JSE"))
         return newPaneLayout
@@ -196,10 +211,7 @@ def split( paneSection, re_assign_position="", newPaneIsInput=True):
         else: 
             logger.critical("re_assign_position not matched with top, bottom, left or right!")
             logger.critical(var1("re_assign_position",re_assign_position))
-            logger.critical(var1(   "== top",re_assign_position == "top"))
-            logger.critical(var1("== bottom",re_assign_position == "bottom"))
-            logger.critical(var1(  "== left",re_assign_position == "left"))
-            logger.critical(var1( "== right",re_assign_position == "right"))
+        
         logger.debug(var1(         "paneConfig",paneConfig ))
         logger.debug(var1("newSectionPaneIndex",newSectionPaneIndex ))
         logger.debug(var1("oldSectionPaneIndex",oldSectionPaneIndex ))
@@ -226,6 +238,25 @@ def split( paneSection, re_assign_position="", newPaneIsInput=True):
 
     logger.info(defEnd("Splitted"))
     logger.info("")
+
+
+def attrInsert(cmdField, objSearchField, attrField):
+    logger.debug(defStart("Inserting attribute to expression field"))
+    logger.debug(var1(      "cmdField",cmdField))
+    logger.debug(var1("objSearchField",objSearchField))
+    logger.debug(var1(     "attrField",attrField))
+
+    logger.debug(head2("Get selected attributes and combine with object string"))
+    attrText = re.split(" ",c.textScrollList(attrField, q=1, selectItem=1)[0])[0]
+    objText  = c.textFieldGrp(objSearchField, q=1, text=1)
+    logger.debug( var1("attrText",attrText))
+    logger.debug( var1( "objText",objText))
+
+    logger.debug(head2("Insert it into the expression field (at current cursor pos)"))
+    c.cmdScrollFieldExecuter(cmdField, e=1, insertText="{0}.{1}".format(objText, attrText))
+    
+    logger.debug(defEnd("Inserted attribute to expression field"))
+    logger.debug("")
 
 
 def deletePane(paneSection):
@@ -333,6 +364,7 @@ def listObjAttr(objTextField, scrollListToOutput):
     for i,j in zip(attrLong,attrShrt): 
         attrTxt.append( "{0} ({1})".format(i,j) )
     
+    sorted(attrTxt)
     c.textScrollList( scrollListToOutput, e=1, append=attrTxt, enable=True)
     logger.debug(defEnd("Listed object attributes") )
 
@@ -487,25 +519,65 @@ def createExpressionMenu( ctrl ):
     logger.debug(var1("ctrl",ctrl))
 
     c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
-    c.menuItem(  label="Right", radialPosition="E",
-                    command="JSE.split('"+ctrl+"','right')" )
-    c.menuItem(  label="Left", radialPosition="W",
-                    command="JSE.split('"+ctrl+"','left')" )
-    c.menuItem(  label="Below", radialPosition="S",
-                    command="JSE.split('"+ctrl+"','bottom')" )
-    c.menuItem(  label="Above", radialPosition="N",
-                    command="JSE.split('"+ctrl+"','top')" )
-
-    c.menuItem(  label="Hey you! Choose new section location...", enable=False)
-    c.menuItem(  label="Remove This Pane!",
-                    command="JSE.deletePane('"+ctrl+"')")
-    c.menuItem(  label="Save script as...",
-                    command="JSE.saveScript('"+ctrl+"',True)")
-    c.menuItem(  label="Save script...",
-                    command="JSE.saveScript('"+ctrl+"',False)")
-
+    c.menuItem(  label="New Expression", radialPosition="E",
+                    command="JSE.logger.debug('New Expression')" )
+    c.menuItem(  label="Save to file", radialPosition="W",
+                    command="JSE.logger.debug('Save expression to file')" )
+    c.menuItem(  label="Close Expression", radialPosition="S",
+                    command="JSE.logger.debug('Unregister Expression')" )
+    c.menuItem(  label="Update Expression", radialPosition="N",
+                    command="JSE.updateExpr('"+ctrl+"')" )
+    
     logger.debug(defEnd("Created Expression Menu"))
     logger.debug("")
+
+
+def updateExpr(exprPanelayout):
+    logger.debug(defStart("Creating/Saving Expression"))
+    logger.debug(var1("exprPanelayout",exprPanelayout))
+
+    logger.debug(head2("Get expression's formLayout, then it's children"))
+    exprForm = c.layout(exprPanelayout,q=1,childArray=1)[0]
+
+    convUnitMenu, evalMenu, defObjTxtField, cmdField = c.layout(exprForm,q=1,childArray=1)
+    convUnitValue = c.optionMenu( convUnitMenu,  q=1, select=1)-1
+    if   convUnitValue == 0: convUnitValue = "all"
+    elif convUnitValue == 1: convUnitValue = "none"
+    elif convUnitValue == 2: convUnitValue = "angularOnly"
+    evalValue     = c.optionMenu(     evalMenu,  q=1, select=1)-1
+    defObjText    = c.textField( defObjTxtField, q=1, text=1)
+    exprText      = c.cmdScrollFieldExecuter( cmdField, q=1, text=1)
+
+    logger.debug(head2("Get tab name for expression name"))
+    tabChildShort = re.split("\|",exprPanelayout)[-1]
+    logger.debug(var1( "tabChildShort", tabChildShort)) 
+    logger.debug(var1("exprPanelayout", exprPanelayout)) 
+    logger.debug(var1(      "(parent)", c.layout( exprPanelayout, q=1,parent=1))) 
+    allTabLabels = c.tabLayout( c.layout( exprPanelayout, q=1,parent=1), q=1, tabLabel=1)
+    allTabChild  = c.tabLayout( c.layout( exprPanelayout, q=1,parent=1), q=1, ca=1)
+
+    for i,j in zip(allTabLabels,allTabChild):
+        if j==tabChildShort: currentTabLabel = i    
+
+    logger.debug(var1(       "exprText",exprText)) 
+    logger.debug(var1("currentTabLabel",currentTabLabel)) 
+    logger.debug(var1(     "defObjText",defObjText)) 
+    logger.debug(var1(      "evalValue",evalValue))
+    logger.debug(var1(  "convUnitValue",convUnitValue))
+
+    c.expression(currentTabLabel,e=1, string=exprText, 
+                                        name=currentTabLabel, 
+                                      object=defObjText, 
+                              alwaysEvaluate=evalValue,
+                              unitConversion=convUnitValue )
+
+    
+    c.cmdScrollFieldExecuter( cmdField, e=1, text=c.expression(currentTabLabel,q=1, string=1) )
+
+    logger.debug(defEnd("Created/Saved Expression"))
+    logger.debug("")
+
+
 
 
 def createOutput( parentPanelLayout ):
@@ -521,7 +593,7 @@ def createOutput( parentPanelLayout ):
     return output
 
 
-def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation):
+def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation, exprDic={}):
     '''
         If there is no text then load from file
     '''
@@ -554,10 +626,11 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation):
         option_Ang = c.menuItem(label="Angular only")
         #--------------------------------------------------------
         evalOption = c.optionMenu( parent = exprForm)
-        option_Alw = c.menuItem(label="Always Evaluate")
         option_OnD = c.menuItem(label="On Demand")
+        option_Alw = c.menuItem(label="Always Evaluate")
         option_AfC = c.menuItem(label="After Cloth")
-        #--------------------------------------------------------
+        c.optionMenu( evalOption, e=1, select = 2)
+        #--------------------------------------------------
         defObject  = c.textField( parent = exprForm, placeholderText="Default Obj. e.g.pCube", w=150 )
         #--------------------------------------------------------
         inputField = c.cmdScrollFieldExecuter(  sourceType= "mel",
@@ -583,8 +656,11 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation):
         attrForm = c.formLayout( parent = exprPanelayout)
         #--------------------------------------------------------
         objSearchField  = c.textFieldGrp( parent = attrForm, placeholderText="Search obj for attr", w=120 )
-        attrList   = c.textScrollList( parent = attrForm, append=["--NOTHING FOUND--"], enable=False )
+        attrList      = c.textScrollList( parent = attrForm, append=["--NOTHING FOUND--"], enable=False) 
+        
         c.textFieldGrp( objSearchField, e=1, textChangedCommand="JSE.listObjAttr('"+objSearchField+"','"+attrList+"')" )
+        c.textScrollList(     attrList, e=1, doubleClickCommand="JSE.attrInsert('"+inputField+"','"+objSearchField+"','"+attrList+"')" )
+        
         logger.debug(var1("textChangedCommand","JSE.listObjAttr('"+objSearchField+"','"+attrList+"')"))
         c.formLayout(attrForm, e=1, attachForm=([objSearchField, "top", 0],
                                                 [objSearchField, "left", 0],
@@ -593,7 +669,9 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation):
                                                 [attrList, "right", 0],
                                                 [attrList,  "bottom", 0]   ),
                                  attachControl=([attrList, "top", 0, objSearchField]) )
+        tabLabel = c.expression(n=tabLabel)
         createPaneMenu(exprPanelayout)
+        createExpressionMenu(exprPanelayout)
 
     else:
         inputField = c.cmdScrollFieldExecuter(  sourceType= tabLang,
@@ -631,7 +709,7 @@ def createInput( parentUI ):
     logger.debug(var1("parentUI",parentUI))
 
     inputLayout = c.formLayout(parent = parentUI) # formLayout that will hold all the tabs and command line text field
-    inputTabsLay = c.tabLayout() # tabLayout that will hold all the input tab buffers
+    inputTabsLay = c.tabLayout(selectCommand="JSE.logger.debug('selected a tab')",visibleChangeCommand="JSE.logger.debug('visibility changed')") # tabLayout that will hold all the input tab buffers
 
     logger.debug(var1("inputLayout",inputLayout))
     logger.debug(var1("inputTabsLay",inputTabsLay ))
@@ -713,8 +791,23 @@ def createInput( parentUI ):
                                 "JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt )
             )
 
+        for i in c.ls(type="expression"):
+            currentExpr = {}
+            currentExpr["string"]         = c.expression(i,q=1,string=1)
+            currentExpr["name"]           = c.expression(i,q=1,name=1)
+            currentExpr["object"]         = c.expression(i,q=1,object=1)
+            currentExpr["alwaysEvaluate"] = c.expression(i,q=1,alwaysEvaluate=1)
+            currentExpr["unitConversion"] = c.expression(i,q=1,unitConversion=1)
+
+            logger.debug(var1(        'currentExpr["string"]', currentExpr["string"] ) )
+            logger.debug(var1(          'currentExpr["name"]', currentExpr["name"] ) )
+            logger.debug(var1(        'currentExpr["object"]', currentExpr["object"] ) )
+            logger.debug(var1('currentExpr["alwaysEvaluate"]', currentExpr["alwaysEvaluate"] ) )
+            logger.debug(var1('currentExpr["unitConversion"]', currentExpr["unitConversion"] ) )
+
+
         currentInputTabs.append( # Append a test expression  layout for the time being
-            makeInputTab( "expr", inputTabsLay, "test expression" , "")
+            makeInputTab( "expr", inputTabsLay, "testExpression" , "")
         )
 
     ''' Now this should be a text base interface for using the scipt editor, much like the command mode of vim #
@@ -957,7 +1050,7 @@ def run(dockable, loggingLevel=logging.ERROR):
 
     # currentInputTabLayouts.append( c.paneLayout() )
     # newPaneLayout = split( currentInputTabLayouts[-1] )
-    newPaneLayout = split( c.paneLayout() )
+    newPaneLayout = split( c.paneLayout(), )
 
     engaged = True
     saveAllTabs()
