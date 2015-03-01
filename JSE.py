@@ -533,6 +533,8 @@ def createExpressionMenu( ctrl ):
 
 
 def updateExpr(exprPanelayout):
+    global currentInputTabLabels
+
     logger.debug(defStart("Creating/Saving Expression"))
     logger.debug(var1("exprPanelayout",exprPanelayout))
 
@@ -789,6 +791,7 @@ def createInput( parentUI ):
     #=============================================================
     #= Create the tabs
     #=============================================================
+
     if len(currentInputTabType) != len(currentInputTabLabels):
         logger.critical("You're fucked!, len(currentInputTabType) should euqal len(currentInputTabLabels)")
         logger.critical("   currentInputTabType (len,value)",len(currentInputTabType) ,  currentInputTabType)
@@ -870,6 +873,21 @@ def saveAllTabs():
     debugGlobals()
 
     """
+    First clean up the currentInputTabs list so there is only 1 SET of active tabs
+    otherwise we end up with non-existing controls that may spring errors
+
+    --- TEMPORARY FIX ---
+
+    """
+    for i in range( len(currentInputTabs)):
+        if c.control(currentInputTabs[i], q=1, exists=1):
+            # ok this control exist, therefore take this "section" of the entire list and use it
+            currentInputTabs = currentInputTabs[i: i+len(currentInputTabLabels)+1]
+            break
+
+
+
+    """
     Then delete the existing buffers in the temp location
     """
     for i in  c.getFileList( folder=scriptEditorTempPath, filespec='JSE*' ):
@@ -887,6 +905,15 @@ def saveAllTabs():
 
             c.cmdScrollFieldExecuter(currentInputTabs[i], e=1,
                                      storeContents="JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt)
+            
+
+            """
+            If it is the default maya script editor, don't bother saving it as this only
+            happens when we are hijacking Maya's settings and contents
+            """
+            if re.match("^commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]): currentInputTabFiles[i]=""
+
+
             """
             Do the same for actual file paths that the script may be opened from
             """
@@ -1058,6 +1085,7 @@ def debugGlobals():
 
 def run(dockable, loggingLevel=logging.ERROR):
     global currentInputTabLayouts
+    global currentInputTabs
     global window
     global layout
     global engaged
