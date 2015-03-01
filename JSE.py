@@ -721,7 +721,7 @@ def createInput( parentUI ):
         # (YES)
         logger.info("Previous JSE existed, loading previous setting from optionVars")
 
-        currentInputTabType  = c.optionVar(q="JSE_input_tabLangs") # Get list of tabs' languages
+        currentInputTabType   = c.optionVar(q="JSE_input_tabLangs") # Get list of tabs' languages
         currentInputTabLabels = c.optionVar(q="JSE_input_tabLabels")# Get list of tabs' label/names
         currentInputTabFiles  = c.optionVar(q="JSE_input_tabFiles") # Get list of tabs' associated file addressess
 
@@ -747,10 +747,19 @@ def createInput( parentUI ):
                 logger.debug(head2("appending"))
 
         else: # (NO)
-            logger.critical( "=== Maya's own script editor, wasn't used!! NUTS! THIS SHOULD NOT BE HAPPENING ===" )
-            logger.critical( "=== Default to standard [MEL, PYTHON] tab ===" )
-            currentInputTabType  = ["mel","python"]
-            currentInputTabLabels = ["mel","python"]
+            try:
+                logger.debug(head2("Looks like Maya's script editor haven't loaded in current session"))
+                logger.debug(head2("Grabbing optionVars from previous session"))
+                currentInputTabType =   c.optionVar(q="ScriptEditorExecuterTypeArray")
+                currentInputTabLabels = c.optionVar(q="ScriptEditorExecuterLabelArray")
+
+                # Still need to sort out the code stored when SE haven't been loaded in current session of Maya
+
+            except:
+                logger.critical( "=== Maya's own script editor, wasn't used!! NUTS! THIS SHOULD NOT BE HAPPENING ===" )
+                logger.critical( "=== Default to standard [MEL, PYTHON] tab ===" )
+                currentInputTabType  = ["mel","python"]
+                currentInputTabLabels = ["mel","python"]
 
         # Either way, whether Maya have it or not, it definitely will not have file locations, so we create one
         for i in range( len(currentInputTabType) ):
