@@ -70,6 +70,41 @@ def exprMenuChange():
     """
     pass
 
+def navigateToParentPaneLayout(paneSection):
+    """
+    ------------Internal useage------------
+    Find the paneLayout above the current control/layout.
+    This is done through assigning and reassigning the parent
+    and child, shuffling up the levels of parents until the
+    a paneLayout is identified
+
+    paneSection         :   child right underneath the paneLayout that the
+    (returned)              input/output section belong to.
+                            The returned value can be different to the parameter
+                            value that was passed in
+    
+    parentPaneLayout    :   paneLayout that is the parent of the pane that
+    (returned)              called the split, initially initialised to paneSection
+                            in order to start the parent traversal algorithm
+    """
+    try: parentPaneLayout = c.control(paneSection, query=True, parent=True)
+    except: parentPaneLayout = c.layout(paneSection, query=True, parent=True)
+    logger.debug(var1(        "parentPaneLayout",parentPaneLayout))
+    logger.info(head1("Traversing to get parent paneLayout"))
+    while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
+        paneSection = parentPaneLayout
+        logger.debug(var1(        "parentPaneLayout",parentPaneLayout))
+        logger.debug(var1(     "paneSection becomes",paneSection))
+        parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
+        logger.debug(var1("parentPaneLayout becomes",parentPaneLayout))
+
+
+    logger.debug(head2("After traversal debug"))
+    logger.debug(var1(     "parent paneLayout is",parentPaneLayout ) )
+    logger.debug(var1(   "child is (paneSection)",paneSection))
+    logger.debug(var1(                 "(exist?)",c.control(paneSection,q=1,ex=1)) )
+    
+    return paneSection,parentPaneLayout
 
 def split( paneSection, re_assign_position=(0,1,1), newPaneIsInput=True):
     """
@@ -131,21 +166,7 @@ def split( paneSection, re_assign_position=(0,1,1), newPaneIsInput=True):
                                     called the split, initially initialised to paneSection
                                     in order to start the parent traversal algorithm
         '''
-        try: parentPaneLayout = c.control(paneSection, query=True, parent=True)
-        except: parentPaneLayout = c.layout(paneSection, query=True, parent=True)
-        logger.debug(var1(        "parentPaneLayout",parentPaneLayout))
-        logger.info(head1("Traversing to get parent paneLayout"))
-        while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
-            paneSection = parentPaneLayout
-            logger.debug(var1(        "parentPaneLayout",parentPaneLayout))
-            logger.debug(var1(      "paneSection become",paneSection))
-            parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
-            logger.debug(var1("parentPaneLayout becomes",parentPaneLayout))
-
-        logger.debug(head2("After traversal debug"))
-        logger.debug(var1(     "parent paneLayout is",parentPaneLayout ) )
-        logger.debug(var1(   "child is (paneSection)",paneSection))
-        logger.debug(var1(                 "(exist?)",c.control(paneSection,q=1,ex=1)) )
+        paneSection,parentPaneLayout = navigateToParentPaneLayout(paneSection)
         
         paneSectionShortName = re.split("\\|",paneSection)[-1]
         logger.debug(var1(              "(shortName)",paneSectionShortName ) )
@@ -287,15 +308,7 @@ def deletePane(paneSection):
                                     called the split, initially initialised to paneSection
                                     in order to start the parent traversal algorithm
     '''
-    try: parentPaneLayout = c.control(paneSection, query=True, parent=True)
-    except: parentPaneLayout = c.layout(paneSection, query=True, parent=True)
-    logger.info("--------Traversing to get parent paneLayout --------")
-    while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
-        paneSection = parentPaneLayout
-        logger.debug(var1(    "parentPaneLayout was",parentPaneLayout))
-        logger.debug(var1(     "paneSection becomes",paneSection))
-        parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
-        logger.debug(var1("parentPaneLayout becomes",parentPaneLayout))
+    paneSection,parentPaneLayout = navigateToParentPaneLayout(paneSection)
 
 
     ''' --- SECOND ---
@@ -898,6 +911,12 @@ def saveAllTabs():
     Finally write the code in the current tabs to files
     """
     for i in range( len( currentInputTabType ) ):
+        """
+        If it is the default maya script editor, don't bother "Save to File" as this 
+        situation only happens when we are hijacking Maya's settings and contents
+        """
+        if re.match("^commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]): currentInputTabFiles[i]=""
+
         if currentInputTabType[i] != "expr":
             fileExt=""
             if currentInputTabType[i] == "python": fileExt = "py"
@@ -906,12 +925,6 @@ def saveAllTabs():
             c.cmdScrollFieldExecuter(currentInputTabs[i], e=1,
                                      storeContents="JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt)
             
-
-            """
-            If it is the default maya script editor, don't bother saving it as this only
-            happens when we are hijacking Maya's settings and contents
-            """
-            if re.match("^commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]): currentInputTabFiles[i]=""
 
 
             """
