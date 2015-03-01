@@ -746,12 +746,19 @@ def createInput( parentUI ):
                 c.cmdScrollFieldExecuter( cmdExecutersList[i], e=1, select=[0,0] )
                 logger.debug(head2("appending"))
 
+            # It definitely will not have file locations, so we create one
+            for i in range( len(currentInputTabType) ):
+                currentInputTabFiles.append("")
+
         else: # (NO)
             try:
                 logger.debug(head2("Looks like Maya's script editor haven't loaded in current session"))
                 logger.debug(head2("Grabbing optionVars from previous session"))
                 currentInputTabType =   c.optionVar(q="ScriptEditorExecuterTypeArray")
                 currentInputTabLabels = c.optionVar(q="ScriptEditorExecuterLabelArray")
+                for i in range( len(currentInputTabType) ):
+                    if i == 0: currentInputTabFiles.append("commandExecuter")
+                    else     : currentInputTabFiles.append("commandExecuter-"+str(i-1))
 
                 # Still need to sort out the code stored when SE haven't been loaded in current session of Maya
 
@@ -761,9 +768,9 @@ def createInput( parentUI ):
                 currentInputTabType  = ["mel","python"]
                 currentInputTabLabels = ["mel","python"]
 
-        # Either way, whether Maya have it or not, it definitely will not have file locations, so we create one
-        for i in range( len(currentInputTabType) ):
-            currentInputTabFiles.append("")
+                # It definitely will not have file locations, so we create one
+                for i in range( len(currentInputTabType) ):
+                    currentInputTabFiles.append("")
 
 
 
@@ -789,17 +796,25 @@ def createInput( parentUI ):
         logger.critical("  currentInputTabFiles (len,value)",len(currentInputTabFiles),  currentInputTabFiles)
     else:
         logger.debug(var1("len(currentInputTabLabels)",len(currentInputTabLabels)))
-
+        logger.debug(var1( "len(currentInputTabFiles)",len(currentInputTabFiles)))
+        
+        logger.debug(head2("Making the script editor tabs"))
         for i in xrange( len(currentInputTabLabels) ):
             if currentInputTabType[i] == "python": fileExt = "py"
             else: fileExt = "mel"
+
+            if re.match("^commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]):
+                fileLocation = currentInputTabFiles[i]
+            else:
+                fileLocation = "JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt
             currentInputTabs.append(
                 makeInputTab(   currentInputTabType[i],
                                 inputTabsLay,
                                 currentInputTabLabels[i],
-                                "JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt )
+                                fileLocation )
             )
 
+        logger.debug(head2("Making the expression editor tabs"))
         for i in c.ls(type="expression"):
             currentExpr = {}
             currentExpr["string"]         = c.expression(i,q=1,string=1)
