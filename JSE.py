@@ -15,11 +15,12 @@ logger = logging.getLogger("JSE")
 
 '''
 
-currentInputTabType = []   # List of tabs' languages
+currentInputTabType = []    # List of tabs' languages
 currentInputTabLabels = []  # List of tabs' label/name
 currentInputTabFiles = []   # List of tabs' associated file location
 currentInputTabs = []       # List of cmdScrollFieldExecuters, will be in order of the tabs (left to right I presume)
 currentInputTabLayouts = [] # List of all tab layout in the various input pane sections
+currentPaneScematic = []    # e.g. ["V50","V30","O","V10","I1","I2","H50","I3","O"]
 
 window = ""                 # The JSE window control
 layout = ""                 # Main layout under the JSE window
@@ -106,7 +107,7 @@ def navigateToParentPaneLayout(paneSection):
     
     return paneSection,parentPaneLayout
 
-def split( paneSection, re_assign_position=(0,1,1), newPaneIsInput=True):
+def split( paneSection, re_assign_position=["V50","I1","O"], newPaneIsInput=True):
     """
     Procedure to split the current pane into 2 panes, or set up the default
     script editor panels if this is the first time it is run
@@ -127,7 +128,7 @@ def split( paneSection, re_assign_position=(0,1,1), newPaneIsInput=True):
     logger.info(defStart("Splitting"))
     logger.debug(var1("paneSection",paneSection) )
     logger.debug(var1("re_assign_position",re_assign_position) )
-    if type(re_assign_position) == tuple:
+    if type(re_assign_position) == list:
         '''
             If just initialising    --- Create new vertical 2 pane layout
                                     --- Create output and input pane and assign
@@ -136,23 +137,64 @@ def split( paneSection, re_assign_position=(0,1,1), newPaneIsInput=True):
                                         snap it to the window's edges
 
         '''
-        newPaneLayout = c.paneLayout(configuration='vertical2',parent=paneSection)
-        if re_assign_position[0] : paneChild1 = createInput(  newPaneLayout )
-        else                     : paneChild1 = createOutput( newPaneLayout )
+        logger.debug(head2("Popping out the first element as it HAS GOT TO BE a paneLayout config"))
+        paneCfg = re_assign_position.pop(0)
+        logger.debug(var1("re_assign_position (popped)",re_assign_position) )
 
-        if re_assign_position[1] : paneChild2 = createInput(  newPaneLayout )
-        else                     : paneChild2 = createOutput( newPaneLayout )
+        if paneCfg[0] == "V" : 
+            paneCfgTxt = "vertical2"
+            paneEditSize = [1, int(paneCfg[1:]), 100]
+        elif paneCfg[0] == "H" :
+            paneCfgTxt = "horizontal2"
+            paneEditSize = [1, 100, int(paneCfg[1:])]
+        else:
+            logger.critical(head1("This paneCfg SHOULD be a paneLayout config!"))
+            logger.critical(var1("paneCfg",paneCfg))
+        logger.debug( var1("paneCfgTxt",paneCfgTxt))
+        logger.debug( var1("paneEditSize",paneEditSize))
+
+        newPaneLayout = c.paneLayout(configuration=paneCfgTxt,parent=paneSection)
+
+        logger.debug( var1("re_assign_position[0]",re_assign_position[0]))
+        if (re_assign_position[0][0]=="V") or (re_assign_position[0][0]=="H"):
+            paneChild1,re_assign_position = split( newPaneLayout, re_assign_position)
+            logger.debug(var1("re_assign_position becomes",re_assign_position))
+            logger.debug(var1("paneChild1",paneChild1))
         
-        if re_assign_position[2] : paneConfig = 'vertical2'
-        else                     : paneConfig = 'horizontal2'
+        elif re_assign_position[0][0]=="I":
+            paneChild1 = createInput(newPaneLayout, int(re_assign_position.pop(0)[1:]))
+            logger.debug(var1("re_assign_position becomes",re_assign_position))
+
+        elif re_assign_position[0][0]=="O":
+            re_assign_position.pop(0)
+            paneChild1 = createOutput(newPaneLayout)
+            logger.debug(var1("re_assign_position becomes",re_assign_position))
+
+
+        logger.debug( var1("re_assign_position[0]",re_assign_position[0]))
+        if (re_assign_position[0][0]=="V") or (re_assign_position[0][0]=="H"):
+            paneChild2,re_assign_position = split( newPaneLayout, re_assign_position)
+            logger.debug(var1("re_assign_position becomes",re_assign_position))
+            logger.debug(var1("paneChild2",paneChild2))
+        
+        elif re_assign_position[0][0]=="I":
+            paneChild2 = createInput(newPaneLayout, int(re_assign_position.pop(0)[1:]))
+            logger.debug(var1("re_assign_position becomes",re_assign_position))
+
+        elif re_assign_position[0][0]=="O":
+            re_assign_position.pop(0)
+            paneChild2 = createOutput(newPaneLayout)
+            logger.debug(var1("re_assign_position becomes",re_assign_position))
+        
         
         logger.debug(var1("newPaneLayout",newPaneLayout) )
         c.paneLayout(newPaneLayout, edit=True,
+                     paneSize=paneEditSize,
                      setPane=[ (paneChild1 , 1),
                                (paneChild2 , 2) ] )
 
         logger.info(head2("Created default split for intialisation/first run of JSE"))
-        return newPaneLayout
+        return newPaneLayout,re_assign_position
     else:
         ''' --- FIRST ---
             Find the paneLayout above the current control/layout.
@@ -381,6 +423,7 @@ def listObjAttr(objTextField, scrollListToOutput):
     c.textScrollList( scrollListToOutput, e=1, append=attrTxt, enable=True)
     logger.debug(defEnd("Listed object attributes") )
 
+
 def saveScript(paneSection, saveAs):
     '''
     This procedure saves the current active tab's script to a file. If...
@@ -593,8 +636,6 @@ def updateExpr(exprPanelayout):
     logger.debug("")
 
 
-
-
 def createOutput( parentPanelLayout ):
     logger.info(defStart("Creating output"))
     logger.debug(var1("parentPanelLayout",parentPanelLayout))
@@ -714,7 +755,7 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation, exprDic={}):
     return inputField
 
 
-def createInput( parentUI ):
+def createInput( parentUI, activeTabIndex=1 ):
     global currentInputTabType
     global currentInputTabLabels
     global currentInputTabFiles
@@ -724,7 +765,9 @@ def createInput( parentUI ):
     logger.debug(var1("parentUI",parentUI))
 
     inputLayout = c.formLayout(parent = parentUI) # formLayout that will hold all the tabs and command line text field
-    inputTabsLay = c.tabLayout(selectCommand="JSE.logger.debug('selected a tab')",visibleChangeCommand="JSE.logger.debug('visibility changed')") # tabLayout that will hold all the input tab buffers
+    inputTabsLay = c.tabLayout(selectCommand="JSE.logger.debug('selected a tab')",
+                               changeCommand="JSE.logger.debug('tab change command')",
+                               visibleChangeCommand="JSE.logger.debug('visibility changed')") # tabLayout that will hold all the input tab buffers
 
     logger.debug(var1("inputLayout",inputLayout))
     logger.debug(var1("inputTabsLay",inputTabsLay ))
@@ -854,7 +897,9 @@ def createInput( parentUI ):
         Right now this is disabled so I can focus on more imprtant stuff
     '''
     inputCmdLine = c.textField(parent= inputLayout, manage=False)
-
+    logger.debug( var1("activeTabIndex",activeTabIndex))
+    logger.debug( var1("inputTabsLay tabLabels",c.tabLayout(inputTabsLay,q=1,tabLabel=1)) )
+    c.tabLayout(inputTabsLay, edit=True, selectTabIndex=activeTabIndex)
     c.formLayout(inputLayout, edit=True,
                  attachForm=[ (inputTabsLay, "top", 0),    # Snapping the top, left and right edges
                               (inputTabsLay, "left", 0),   # of the tabLayout to the edges of the
@@ -1115,7 +1160,7 @@ def run(dockable, loggingLevel=logging.ERROR):
 
     # currentInputTabLayouts.append( c.paneLayout() )
     # newPaneLayout = split( currentInputTabLayouts[-1] )
-    newPaneLayout = split( c.paneLayout(), )
+    newPaneLayout = split( c.paneLayout(),["V10","O","I5"] )
 
     engaged = True
     saveAllTabs()
