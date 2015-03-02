@@ -1,6 +1,7 @@
 import maya.cmds as c
 import re
 from maya.mel import eval as melEval
+from copy import deepcopy
 
 import logging
 logger = logging.getLogger("JSE")
@@ -20,7 +21,14 @@ currentInputTabLabels = []  # List of tabs' label/name
 currentInputTabFiles = []   # List of tabs' associated file location
 currentInputTabs = []       # List of cmdScrollFieldExecuters, will be in order of the tabs (left to right I presume)
 currentInputTabLayouts = [] # List of all tab layout in the various input pane sections
-currentPaneScematic = []    # e.g. ["V50","V30","O","V10","I1","I2","H50","I3","O"]
+currentPaneScematic = ["V50","I1","O"]    # e.g. ["V50","V30","O","V10","I1","I2","H50","I3","O"]
+currentAllSchematic = []    # e.g. [ ["V50", "window4|paneLayout19|paneLayout20",
+                            #         "O"  , "window4|paneLayout19|paneLayout20|cmdScrollFieldReporter8"],
+                            #         "I1" , "window4|paneLayout19|paneLayout20|formLayout123"],
+                            #        ["V31", "window5|paneLayout21|paneLayout22",
+                            #         "O"  , "window5|paneLayout21|paneLayout22|cmdScrollFieldReporter10"],
+                            #         "I3" , "window5|paneLayout21|paneLayout22|formLayout343"] 
+                            #      ]
 
 window = ""                 # The JSE window control
 layout = ""                 # Main layout under the JSE window
@@ -46,30 +54,6 @@ def head1(text): return "{:=^80}".format(" "+str(text)+" ")
 def head2(text): return "{:-^80}".format(" "+str(text)+" ")
 def var1(inText,inVar): return "{:>30} -- {!s}".format(str(inText) , str(inVar) )
 
-
-def exprMenuChange():
-    """ ==========Evaluation methods from expressionEdCallbacks.mel==========
-    global proc EEanimatedCB()
-    {
-        global int $EEcreateMode;
-        global int $EEeditedInEditor;
-        global string $EEcurrExpressionName;
-
-        // If in edit mode, reset the expression animated value immediately.
-        //
-        if (!$EEcreateMode)
-        {
-            int $anType = `optionMenu -query -select EEanimTypeOM`;
-            $EEeditedInEditor = 1;
-
-            int $optionVal = $anType - 1; // Since command's option is 0 based
-
-            evalEcho("expression -edit -alwaysEvaluate " + $optionVal + " " + $EEcurrExpressionName);
-        }
-
-    }   // EEanimatedCB
-    """
-    pass
 
 def navigateToParentPaneLayout(paneSection):
     """
@@ -107,200 +91,284 @@ def navigateToParentPaneLayout(paneSection):
     
     return paneSection,parentPaneLayout
 
-def split( paneSection, re_assign_position=["V50","I1","O"], newPaneIsInput=True):
+
+def constructSplits( paneSection, buildSchematic ):
     """
     Procedure to split the current pane into 2 panes, or set up the default
     script editor panels if this is the first time it is run
 
 
-    re_assign_position:    (0,1),  Internal use e.g. for initial creation, creates a set split pane, 
-                                   where:
-                                   [0] and [1] : 0 is for 0utput and 1 for 1nput (see what I did there)
-                                                 and which one of the 2 pane it will correspond to (in order)
-                                           [2] : 1 for vertical split and 0 for horizontal split
-                                   otherwise...
-                        "bottom",  New pane position for existing pane, which will then be
-                          "left",  used to figure out the pane number for setPane flag and
-                         "right",  horizontal/vertical for configuration flag for c.paneLayout()
-                           "top"
+              buildSchematic,  ---Need to write description for it---
     """
     global currentInputTabLayouts
+    global currentAllSchematic
+
+    logger.info(defStart("Splitting"))
+    logger.debug(var1("paneSection",paneSection) )
+    logger.debug(var1("buildSchematic",buildSchematic) )
+    '''
+        If just initialising    --- Create new vertical 2 pane layout
+                                --- Create output and input pane and assign
+                                    it to the new pane layout
+                                --- Return the pane layout so formLayout can
+                                    snap it to the window's edges
+
+    '''
+    logger.debug(head2("Popping out the first element as it HAS GOT TO BE a paneLayout config"))
+    paneCfg = buildSchematic.pop(0)
+    logger.debug(var1("buildSchematic (popped)",buildSchematic) )
+    currentAllSchematic[-1].append(paneCfg)
+    logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
+
+
+    if paneCfg[0] == "V" : 
+        paneCfgTxt = "vertical2"
+        paneEditSize = [1, int(paneCfg[1:]), 100]
+    elif paneCfg[0] == "H" :
+        paneCfgTxt = "horizontal2"
+        paneEditSize = [1, 100, int(paneCfg[1:])]
+    else:
+        logger.critical(head1("This paneCfg SHOULD be a paneLayout config!"))
+        logger.critical(var1("paneCfg",paneCfg))
+    logger.debug( var1("paneCfgTxt",paneCfgTxt))
+    logger.debug( var1("paneEditSize",paneEditSize))
+
+    newPaneLayout = c.paneLayout(configuration=paneCfgTxt,parent=paneSection)
+    currentAllSchematic[-1].append(newPaneLayout)
+    logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
+
+    logger.debug( var1("buildSchematic[0]",buildSchematic[0]))
+    if (buildSchematic[0][0]=="V") or (buildSchematic[0][0]=="H"):
+        paneChild1,buildSchematic = constructSplits( newPaneLayout, buildSchematic)
+        logger.debug(var1("buildSchematic becomes",buildSchematic))
+        logger.debug(var1("paneChild1",paneChild1))
+    
+    elif buildSchematic[0][0]=="I":
+        currentAllSchematic[-1].append(buildSchematic[0])
+        paneChild1 = createInput(newPaneLayout, int(buildSchematic.pop(0)[1:]))
+        logger.debug(var1("buildSchematic becomes",buildSchematic))
+        currentAllSchematic[-1].append(paneChild1)
+        logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
+
+    elif buildSchematic[0][0]=="O":
+        currentAllSchematic[-1].append( buildSchematic.pop(0) )
+        paneChild1 = createOutput(newPaneLayout)
+        logger.debug(var1("buildSchematic becomes",buildSchematic))
+        currentAllSchematic[-1].append(paneChild1)
+        logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
+
+
+    logger.debug( var1("buildSchematic[0]",buildSchematic[0]))
+    if (buildSchematic[0][0]=="V") or (buildSchematic[0][0]=="H"):
+        paneChild2,buildSchematic = constructSplits( newPaneLayout, buildSchematic)
+        logger.debug(var1("buildSchematic becomes",buildSchematic))
+        logger.debug(var1("paneChild2",paneChild2))
+    
+    elif buildSchematic[0][0]=="I":
+        currentAllSchematic[-1].append(buildSchematic[0])
+        paneChild2 = createInput(newPaneLayout, int(buildSchematic.pop(0)[1:]))
+        logger.debug(var1("buildSchematic becomes",buildSchematic))
+        currentAllSchematic[-1].append(paneChild2)
+        logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
+
+    elif buildSchematic[0][0]=="O":
+        currentAllSchematic[-1].append( buildSchematic.pop(0) )
+        paneChild2 = createOutput(newPaneLayout)
+        logger.debug(var1("buildSchematic becomes",buildSchematic))
+        currentAllSchematic[-1].append(paneChild2)
+        logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
+    
+    
+    logger.debug(var1("newPaneLayout",newPaneLayout) )
+    c.paneLayout(newPaneLayout, edit=True,
+                 paneSize=paneEditSize,
+                 setPane=[ (paneChild1 , 1),
+                           (paneChild2 , 2) ] )
+
+    
+    logger.info(defEnd("Constructed current split"))
+    logger.info("")
+    return newPaneLayout,buildSchematic
+
+
+def split( paneSection, re_assign_position, newPaneIsInput=True):
+    """
+    Procedure to split the current pane into 2 panes, or set up the default
+    script editor panels if this is the first time it is run
+
+
+              re_assign_position,  New pane position for existing pane, which will then be
+                                   used to figure out the pane number for setPane flag and
+                                   horizontal/vertical for configuration flag for c.paneLayout()
+    """
+    global currentInputTabLayouts
+    global currentPaneScematic
+    
     logger.info(defStart("Splitting"))
     logger.debug(var1("paneSection",paneSection) )
     logger.debug(var1("re_assign_position",re_assign_position) )
-    if type(re_assign_position) == list:
-        '''
-            If just initialising    --- Create new vertical 2 pane layout
-                                    --- Create output and input pane and assign
-                                        it to the new pane layout
-                                    --- Return the pane layout so formLayout can
-                                        snap it to the window's edges
 
-        '''
-        logger.debug(head2("Popping out the first element as it HAS GOT TO BE a paneLayout config"))
-        paneCfg = re_assign_position.pop(0)
-        logger.debug(var1("re_assign_position (popped)",re_assign_position) )
+    ''' --- FIRST ---
+        Find the paneLayout above the current control/layout.
+        This is done through assigning and reassigning the parent
+        and child, shuffling up the levels of parents until the
+        a paneLayout is identified
 
-        if paneCfg[0] == "V" : 
-            paneCfgTxt = "vertical2"
-            paneEditSize = [1, int(paneCfg[1:]), 100]
-        elif paneCfg[0] == "H" :
-            paneCfgTxt = "horizontal2"
-            paneEditSize = [1, 100, int(paneCfg[1:])]
-        else:
-            logger.critical(head1("This paneCfg SHOULD be a paneLayout config!"))
-            logger.critical(var1("paneCfg",paneCfg))
-        logger.debug( var1("paneCfgTxt",paneCfgTxt))
-        logger.debug( var1("paneEditSize",paneEditSize))
-
-        newPaneLayout = c.paneLayout(configuration=paneCfgTxt,parent=paneSection)
-
-        logger.debug( var1("re_assign_position[0]",re_assign_position[0]))
-        if (re_assign_position[0][0]=="V") or (re_assign_position[0][0]=="H"):
-            paneChild1,re_assign_position = split( newPaneLayout, re_assign_position)
-            logger.debug(var1("re_assign_position becomes",re_assign_position))
-            logger.debug(var1("paneChild1",paneChild1))
-        
-        elif re_assign_position[0][0]=="I":
-            paneChild1 = createInput(newPaneLayout, int(re_assign_position.pop(0)[1:]))
-            logger.debug(var1("re_assign_position becomes",re_assign_position))
-
-        elif re_assign_position[0][0]=="O":
-            re_assign_position.pop(0)
-            paneChild1 = createOutput(newPaneLayout)
-            logger.debug(var1("re_assign_position becomes",re_assign_position))
+        paneSection         :   child right underneath the paneLayout that the
+                                input/output section belong to
+        parentPaneLayout    :   paneLayout that is the parent of the pane that
+                                called the split, initially initialised to paneSection
+                                in order to start the parent traversal algorithm
+    '''
+    paneSection,parentPaneLayout = navigateToParentPaneLayout(paneSection)
+    
+    paneSectionShortName = re.split("\\|",paneSection)[-1]
+    logger.debug(var1(              "(shortName)",paneSectionShortName ) )
+    
+    parentPaneLayoutChildArray = c.paneLayout( parentPaneLayout, query=True, ca=True)
+    logger.debug(var1("parentPaneLayout children",parentPaneLayoutChildArray ))
+    logger.debug(var1(       "child index number",parentPaneLayoutChildArray.index(paneSectionShortName) ))
 
 
-        logger.debug( var1("re_assign_position[0]",re_assign_position[0]))
-        if (re_assign_position[0][0]=="V") or (re_assign_position[0][0]=="H"):
-            paneChild2,re_assign_position = split( newPaneLayout, re_assign_position)
-            logger.debug(var1("re_assign_position becomes",re_assign_position))
-            logger.debug(var1("paneChild2",paneChild2))
-        
-        elif re_assign_position[0][0]=="I":
-            paneChild2 = createInput(newPaneLayout, int(re_assign_position.pop(0)[1:]))
-            logger.debug(var1("re_assign_position becomes",re_assign_position))
+    ''' --- SECOND ---
+        Figure out which index of the pane that called split is in.
+        This is done by retrieving the child array, where it's index is in the
+        same order as the pane index, and then finding the index of the element
+        that matches the paneSection's short name (that is, not including the
+        full path)
 
-        elif re_assign_position[0][0]=="O":
-            re_assign_position.pop(0)
-            paneChild2 = createOutput(newPaneLayout)
-            logger.debug(var1("re_assign_position becomes",re_assign_position))
-        
-        
-        logger.debug(var1("newPaneLayout",newPaneLayout) )
-        c.paneLayout(newPaneLayout, edit=True,
-                     paneSize=paneEditSize,
-                     setPane=[ (paneChild1 , 1),
-                               (paneChild2 , 2) ] )
+        paneSectionShortName        :   name of the control/layout immediately under the
+                                        parentPaneLayout that the split was called from
+                                        (dis-includes the full object path)
 
-        logger.info(head2("Created default split for intialisation/first run of JSE"))
-        return newPaneLayout,re_assign_position
-    else:
-        ''' --- FIRST ---
-            Find the paneLayout above the current control/layout.
-            This is done through assigning and reassigning the parent
-            and child, shuffling up the levels of parents until the
-            a paneLayout is identified
-
-            paneSection         :   child right underneath the paneLayout that the
-                                    input/output section belong to
-            parentPaneLayout    :   paneLayout that is the parent of the pane that
-                                    called the split, initially initialised to paneSection
-                                    in order to start the parent traversal algorithm
-        '''
-        paneSection,parentPaneLayout = navigateToParentPaneLayout(paneSection)
-        
-        paneSectionShortName = re.split("\\|",paneSection)[-1]
-        logger.debug(var1(              "(shortName)",paneSectionShortName ) )
-        
-        parentPaneLayoutChildArray = c.paneLayout( parentPaneLayout, query=True, ca=True)
-        logger.debug(var1("parentPaneLayout children",parentPaneLayoutChildArray ))
-        logger.debug(var1(       "child index number",parentPaneLayoutChildArray.index(paneSectionShortName) ))
-
-
-        ''' --- SECOND ---
-            Figure out which index of the pane that called split is in.
-            This is done by retrieving the child array, where it's index is in the
-            same order as the pane index, and then finding the index of the element
-            that matches the paneSection's short name (that is, not including the
-            full path)
-
-            paneSectionShortName        :   name of the control/layout immediately under the
-                                            parentPaneLayout that the split was called from
-                                            (dis-includes the full object path)
-
-            paneSectionNumber           :   pane index is the index of the child element + 1
-        '''
-        paneSectionShortName = re.split("\|",paneSection)[-1] # strip the short name from the full name
-        paneSectionNumber = c.paneLayout( parentPaneLayout, query=True, ca=True).index(paneSectionShortName)+1
+        paneSectionNumber           :   pane index is the index of the child element + 1
+    '''
+    paneSectionShortName = re.split("\|",paneSection)[-1] # strip the short name from the full name
+    paneSectionNumber = c.paneLayout( parentPaneLayout, query=True, ca=True).index(paneSectionShortName)+1
 
 
 
 
-        ''' --- FINALLY ---
-            Setup values for new paneLayout setup and assingment of new/existing panes
-            to the newly created paneLayout depending on direction.
+    ''' --- FINALLY ---
+        Setup values for new paneLayout setup and assingment of new/existing panes
+        to the newly created paneLayout depending on direction.
 
-            paneConfig          :   paneLayout flag value for the configuration flag,
-                                    how the pane layout is split basically
-            newPaneLayout       :   name of the new pane layout created using the
-                                    specified configuration
-            newSectionPaneIndex :   Pane number for the new section to be created
-                                    in the new paneLayout
-            oldSectionPaneIndex :   Pane number for the previously existing section
-                                    that was "split" in this new paneLayout
+        paneConfig          :   paneLayout flag value for the configuration flag,
+                                how the pane layout is split basically
+        newPaneLayout       :   name of the new pane layout created using the
+                                specified configuration
+        newSectionPaneIndex :   Pane number for the new section to be created
+                                in the new paneLayout
+        oldSectionPaneIndex :   Pane number for the previously existing section
+                                that was "split" in this new paneLayout
 
-        '''
-        if re_assign_position == "top":
-            paneConfig = 'horizontal2'
-            newSectionPaneIndex = 1
-            oldSectionPaneIndex = 2
+    '''
+    if re_assign_position == "top":
+        paneConfig = 'horizontal2'
+        newSectionPaneIndex = 1
+        oldSectionPaneIndex = 2
 
-        elif re_assign_position == "bottom":
-            paneConfig = 'horizontal2'
-            newSectionPaneIndex = 2
-            oldSectionPaneIndex = 1
+    elif re_assign_position == "bottom":
+        paneConfig = 'horizontal2'
+        newSectionPaneIndex = 2
+        oldSectionPaneIndex = 1
 
-        elif re_assign_position == "left":
-            paneConfig = 'vertical2'
-            newSectionPaneIndex = 1
-            oldSectionPaneIndex = 2
+    elif re_assign_position == "left":
+        paneConfig = 'vertical2'
+        newSectionPaneIndex = 1
+        oldSectionPaneIndex = 2
 
-        elif re_assign_position == "right":
-            paneConfig = 'vertical2'
-            newSectionPaneIndex = 2
-            oldSectionPaneIndex = 1
-        
-        else: 
-            logger.critical("re_assign_position not matched with top, bottom, left or right!")
-            logger.critical(var1("re_assign_position",re_assign_position))
-        
-        logger.debug(var1(         "paneConfig",paneConfig ))
-        logger.debug(var1("newSectionPaneIndex",newSectionPaneIndex ))
-        logger.debug(var1("oldSectionPaneIndex",oldSectionPaneIndex ))
+    elif re_assign_position == "right":
+        paneConfig = 'vertical2'
+        newSectionPaneIndex = 2
+        oldSectionPaneIndex = 1
+    
+    else: 
+        logger.critical("re_assign_position not matched with top, bottom, left or right!")
+        logger.critical(var1("re_assign_position",re_assign_position))
+    
+    logger.debug(var1(         "paneConfig",paneConfig ))
+    logger.debug(var1("newSectionPaneIndex",newSectionPaneIndex ))
+    logger.debug(var1("oldSectionPaneIndex",oldSectionPaneIndex ))
 
-        logger.debug(head2("Setting values for new paneLayouts" ) )
-        newPaneLayout =  c.paneLayout(configuration=paneConfig, parent=parentPaneLayout)
+    logger.debug(head2("Setting values for new paneLayouts" ) )
+    newPaneLayout =  c.paneLayout(configuration=paneConfig, parent=parentPaneLayout)
 
-        logger.debug(var1("parentPaneLayout",parentPaneLayout ))
-        logger.debug(var1(     "paneSection",paneSection ))
-        logger.debug(var1(   "newPaneLayout",newPaneLayout ))
-        logger.debug(var1(        "(exist?)",c.paneLayout(newPaneLayout, q=1,ex=1) ) )
-        c.paneLayout(parentPaneLayout, edit=True,
-                     setPane=[( newPaneLayout, paneSectionNumber )]  )
+    logger.debug(var1("parentPaneLayout",parentPaneLayout ))
+    logger.debug(var1(     "paneSection",paneSection ))
+    logger.debug(var1(   "newPaneLayout",newPaneLayout ))
+    logger.debug(var1(        "(exist?)",c.paneLayout(newPaneLayout, q=1,ex=1) ) )
+    c.paneLayout(parentPaneLayout, edit=True,
+                 setPane=[( newPaneLayout, paneSectionNumber )]  )
 
-        logger.debug(head2("Assigning new split to current pane" ) )
-        c.control(paneSection, edit=True, parent=newPaneLayout)
-        if newPaneIsInput:  c.paneLayout(newPaneLayout, edit=True,
-                                         setPane=[ (createInput( newPaneLayout ) , newSectionPaneIndex),
-                                                   (        paneSection          , oldSectionPaneIndex) ] )
-        else:   c.paneLayout(newPaneLayout, edit=True,
-                             setPane=[ ( createOutput(newPaneLayout) , newSectionPaneIndex),
-                                       (        paneSection          , oldSectionPaneIndex) ] )
+    logger.debug(head2("Assigning new split to current pane" ) )
+    c.control(paneSection, edit=True, parent=newPaneLayout)
+    if newPaneIsInput:  c.paneLayout(newPaneLayout, edit=True,
+                                     setPane=[ (createInput( newPaneLayout ) , newSectionPaneIndex),
+                                               (        paneSection          , oldSectionPaneIndex) ] )
+    else:   c.paneLayout(newPaneLayout, edit=True,
+                         setPane=[ ( createOutput(newPaneLayout) , newSectionPaneIndex),
+                                   (        paneSection          , oldSectionPaneIndex) ] )
 
 
     logger.info(defEnd("Splitted"))
     logger.info("")
+
+
+def refreshAllScematic():
+    logger.debug(defStart("Refreshing all schematics"))
+    global currentAllSchematic
+    schematicForDeletion = []
+    logger.debug(var1("currentAllSchematic",currentAllSchematic))
+
+    for i in xrange(len(currentAllSchematic)):
+        logger.debug( head2("Schematic "+str(i)) )
+        windowSchematic = currentAllSchematic[i]
+        logger.debug(var1("windowSchematic",windowSchematic))
+        
+        fullPathSplit = re.split("\|", windowSchematic[i+1])
+        logger.debug(var1("fullPathSplit",fullPathSplit))
+
+        if not c.window( fullPathSplit[0], q=1, exists=1):
+            logger.debug( head1("Schematic window doesn't exist"))
+            schematicForDeletion.append( i )
+            logger.debug(var1("schematicForDeletion",schematicForDeletion))
+        else:
+            for j in xrange(0 , len(windowSchematic), 2):
+                treeNode  = windowSchematic[j]
+                logger.debug(var1("treeNode",treeNode))
+                
+                treeNodeType  = windowSchematic[j][0]
+                logger.debug(var1("treeNodeType",treeNodeType))
+
+                ctrlOrLay     = windowSchematic[j+1]
+                logger.debug(var1("ctrlOrLay",ctrlOrLay))              
+
+                
+                if treeNodeType == "V":
+                    windowSchematic[j] = treeNodeType+str(c.paneLayout( ctrlOrLay , q=1, paneSize=1)[0])
+                
+                elif treeNodeType == "H":
+                    windowSchematic[j] = treeNodeType+str(c.paneLayout( ctrlOrLay , q=1, paneSize=1)[1])
+                
+                elif treeNodeType == "I":
+                    childTabLay = c.layout(ctrlOrLay,q=1,childArray=1)[0]
+                    windowSchematic[j] = treeNode+str(c.tabLayout( childTabLay , q=1, selectTabIndex=1) )
+
+                logger.debug(var1("windowSchematic[i]",windowSchematic[i]))
+
+    
+    logger.debug( head2("Deleting schematics marked for deletion") )
+    logger.debug(var1("schematicForDeletion",schematicForDeletion)) 
+    # Remove lists from the back to front to avoid out of range issues
+    for i in reversed(schematicForDeletion):
+        currentAllSchematic.pop(i)  
+        logger.debug(var1("schematicForDeletion",schematicForDeletion))
+        logger.debug(var1("currentAllSchematic",currentAllSchematic))
+    
+    logger.debug(var1("final currentAllSchematic",currentAllSchematic))
+    
+    logger.debug(defStart("Refreshed all schematics"))          
 
 
 def attrInsert(cmdField, objSearchField, attrField):
@@ -588,6 +656,34 @@ def createExpressionMenu( ctrl ):
     logger.debug("")
 
 
+def createDebugMenu( ctrl ):
+    logger.debug(defStart("Creating Debug Menu"))
+    logger.debug(var1("ctrl",ctrl))
+
+    c.popupMenu( parent=ctrl , markingMenu=True,
+                 shiftModifier=True, ctrlModifier=True, altModifier=True ) # markingMenu = Enable pie style menu
+    c.menuItem(  label="wipeOptionVars", radialPosition="E",
+                    command="JSE.wipeOptionVars()" )
+    c.menuItem(  label="refreshAllScematic", radialPosition="W",
+                    command="JSE.refreshAllScematic()" )
+    # c.menuItem(  label="", radialPosition="S",
+    #                 command="" )
+    c.menuItem(  label="Reload", radialPosition="N",
+                    command="reload(JSE)" )
+
+    c.menuItem(  label="Run in... [SetLevel]", enable=False)
+    c.menuItem(  label="Debug",  command="JSE.run(0,JSE.logging.DEBUG)")
+    c.menuItem(  optionBox=True, command="JSE.logger.setLevel(JSE.logging.DEBUG)")
+    c.menuItem(  label="Info",   command="JSE.run(0,JSE.logging.INFO)")
+    c.menuItem(  optionBox=True, command="JSE.logger.setLevel(JSE.logging.INFO)")
+    c.menuItem(  label="Error",  command="JSE.run(0,JSE.logging.ERROR)")
+    c.menuItem(  optionBox=True, command="JSE.logger.setLevel(JSE.logging.ERROR)")
+
+    
+    logger.debug(defEnd("Created Debug Menu"))
+    logger.debug("")
+
+
 def updateExpr(exprPanelayout):
     global currentInputTabLabels
 
@@ -644,6 +740,7 @@ def createOutput( parentPanelLayout ):
     logger.debug(var1("output",output))
     
     createPaneMenu( output )
+    createDebugMenu( output )
     logger.info(defEnd("Created output!"))
     logger.info("")
     return output
@@ -912,7 +1009,7 @@ def createInput( parentUI, activeTabIndex=1 ):
                  attachControl=(inputTabsLay, "bottom", 0, inputCmdLine) )
                  # Snap the bottom of the tabLayout to the top of cmdLine
 
-
+    createDebugMenu(inputTabsLay)
     logger.info(defEnd("Created input"))
     logger.info("")
 
@@ -1017,7 +1114,6 @@ def syncAll():
     for i in currentInputTabFiles : c.optionVar(stringValueAppend=["JSE_input_tabFiles" ,i])
 
 
-
 def wipeOptionVars():
     for i in c.optionVar(list=True):
         if i[0:4] == "JSE_":
@@ -1112,6 +1208,8 @@ def debugGlobals():
     global currentInputTabFiles
     global currentInputTabs
     global currentInputTabLayouts
+    global currentPaneScematic
+    global currentAllSchematic
     global window
     global layout
     global engaged
@@ -1134,6 +1232,12 @@ def debugGlobals():
     logger.debug("currentInputTabLayouts, size : %s",len(currentInputTabLayouts))
     logger.debug("%s",currentInputTabLayouts)
     logger.debug("")
+    logger.debug("   currentPaneScematic, size : %s",len(currentPaneScematic))
+    logger.debug("%s",currentPaneScematic)
+    logger.debug("")
+    logger.debug("    currentAllSchematic, size : %s",len(currentAllSchematic))
+    logger.debug("%s",currentAllSchematic)
+    logger.debug("")
     logger.debug("                      window : %s",window)
     logger.debug("                      layout : %s",layout)
     logger.debug("                      engaged: %s",engaged)
@@ -1143,7 +1247,8 @@ def debugGlobals():
 
 def run(dockable, loggingLevel=logging.ERROR):
     global currentInputTabLayouts
-    global currentInputTabs
+    global currentAllSchematic
+    global currentPaneScematic
     global window
     global layout
     global engaged
@@ -1156,12 +1261,17 @@ def run(dockable, loggingLevel=logging.ERROR):
     debugGlobals()
 
     #---- Setup ----
-    window = c.window(title="JSE", width=950, height=650)
 
+    window = c.window(title="JSE", width=950, height=650)
+    currentAllSchematic.append([])
     # currentInputTabLayouts.append( c.paneLayout() )
     # newPaneLayout = split( currentInputTabLayouts[-1] )
-    newPaneLayout = split( c.paneLayout(),["V10","O","I5"] )
-
+    newPaneLayout = constructSplits(  c.paneLayout(), deepcopy(currentPaneScematic) )
+    
+    # Re-populate
+    # for i in xrange(0, len(currentAllSchematic[-1]), 2):
+    #     currentPaneScematic.append(currentAllSchematic[-1][i])
+    
     engaged = True
     saveAllTabs()
 
