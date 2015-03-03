@@ -33,6 +33,8 @@ currentAllSchematic = []    # e.g. [ ["V50", "window4|paneLayout19|paneLayout20"
 window = ""                 # The JSE window control
 layout = ""                 # Main layout under the JSE window
 engaged = False             # If True, JSE had ran in this instance of Maya
+InputBuffersPath = ""
+OutputSnapshotsPath = ""
 
 ''' Global Input/Output Settings:
 
@@ -684,6 +686,49 @@ def createDebugMenu( ctrl ):
     logger.debug("")
 
 
+def outputMethods(ctrl, method):
+    global OutputSnapshotsPath
+    logger.debug(defStart("Output method processing"))
+    logger.debug(var1("ctrl",ctrl))
+    logger.debug(var1("method",method))
+    
+    if method == "snapshotThenWipe":
+        logger.debug(var1("snapshot to file",OutputSnapshotsPath+c.date(format="snapshot-YYYY-MMm-DDd-hhhmmmss.txt")))
+        with open(OutputSnapshotsPath+c.date(format="snapshot-YYYY-MMm-DDd-hhhmmmss.txt"),"w") as snapshotFile:
+            snapshotFile.write(c.cmdScrollFieldReporter(ctrl, q=1, text=1))
+        c.cmdScrollFieldReporter(ctrl, e=1, clear=1)
+
+    logger.debug(defEnd("Output method processed"))
+    logger.debug("")
+
+
+def createOutputMenu( ctrl ):
+    logger.debug(defStart("Creating Output Menu"))
+    logger.debug(var1("ctrl",ctrl))
+
+    c.popupMenu( parent=ctrl , shiftModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
+    c.menuItem(  label="Snapshot then Wipe", radialPosition="E",
+                    command="JSE.outputMethods('"+ctrl+"','snapshotThenWipe')" )
+    c.menuItem(  label="---", radialPosition="W",
+                    command="" )
+    c.menuItem(  label="---", radialPosition="S",
+                    command="" )
+    c.menuItem(  label="---", radialPosition="N",
+                    command="" )
+
+    c.menuItem(  label="---", enable=False)
+    c.menuItem(  label="---",
+                    command="")
+    c.menuItem(  label="",
+                    command="")
+    c.menuItem(  label="",
+                    command="")
+
+    logger.debug(defEnd("Created Output Menu"))
+    logger.debug("")
+
+
+
 def updateExpr(exprPanelayout):
     global currentInputTabLabels
 
@@ -741,6 +786,7 @@ def createOutput( parentPanelLayout ):
     
     createPaneMenu( output )
     createDebugMenu( output )
+    createOutputMenu( output )
     logger.info(defEnd("Created output!"))
     logger.info("")
     return output
@@ -834,8 +880,8 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation, exprDic={}):
                                                 showLineNumbers=True )
         logger.debug(var1("inputField",inputField))
 
-                
-        c.cmdScrollFieldExecuter(inputField, e=1, loadContents=fileLocation)
+        with open(fileLocation,"r") as bufferFile:
+            c.cmdScrollFieldExecuter(inputField, e=1, text=bufferFile.read() )
 
         # make sure the text is not selected
         c.cmdScrollFieldExecuter(inputField, e=1, select=[0,0] )
@@ -857,6 +903,7 @@ def createInput( parentUI, activeTabIndex=1 ):
     global currentInputTabLabels
     global currentInputTabFiles
     global currentInputTabs
+    global InputBuffersPath
 
     logger.info(defStart("Creating input"))
     logger.debug(var1("parentUI",parentUI))
@@ -897,7 +944,7 @@ def createInput( parentUI, activeTabIndex=1 ):
                 logger.debug(var1("cmdExecutersList[i]",cmdExecutersList[i]) )
                 logger.debug(var1("saving to","JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt) )
                 logger.debug("\n"+c.cmdScrollFieldExecuter(cmdExecutersList[i], q=1, text=1) )
-                c.cmdScrollFieldExecuter( cmdExecutersList[i], e=1, storeContents="JSE-Tab-"+str(i)+"-"+str(currentInputTabLabels[i])+"."+str(fileExt) )
+                c.cmdScrollFieldExecuter( cmdExecutersList[i], e=1, storeContents=InputBuffersPath+"JSE-Tab-"+str(i)+"-"+str(currentInputTabLabels[i])+"."+str(fileExt) )
                 c.cmdScrollFieldExecuter( cmdExecutersList[i], e=1, select=[0,0] )
                 logger.debug(head2("appending"))
 
@@ -962,7 +1009,7 @@ def createInput( parentUI, activeTabIndex=1 ):
             if re.match("^commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]):
                 fileLocation = currentInputTabFiles[i]
             else:
-                fileLocation = "JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt
+                fileLocation = InputBuffersPath+"JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt
             currentInputTabs.append(
                 makeInputTab(   currentInputTabType[i],
                                 inputTabsLay,
@@ -1021,10 +1068,11 @@ def saveAllTabs():
     global currentInputTabLabels
     global currentInputTabFiles
     global currentInputTabs
+    global InputBuffersPath
 
     logger.info(defStart("Saving All"))
-    scriptEditorTempPath = c.about(preferences=1)+"/prefs/scriptEditorTemp/"
-    logger.debug(var1("scriptEditorTempPath",scriptEditorTempPath))
+    
+    logger.debug(var1("InputBuffersPath",InputBuffersPath))
     debugGlobals()
 
     """
@@ -1045,8 +1093,8 @@ def saveAllTabs():
     """
     Then delete the existing buffers in the temp location
     """
-    for i in  c.getFileList( folder=scriptEditorTempPath, filespec='JSE*' ):
-        c.sysFile(scriptEditorTempPath+i,delete=1)
+    for i in  c.getFileList( folder=InputBuffersPath, filespec='JSE*' ):
+        c.sysFile(InputBuffersPath+i,delete=1)
 
 
     """
@@ -1065,7 +1113,7 @@ def saveAllTabs():
             else: fileExt = "mel"
 
             c.cmdScrollFieldExecuter(currentInputTabs[i], e=1,
-                                     storeContents="JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt)
+                                     storeContents=InputBuffersPath+"JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt)
             
 
 
@@ -1249,6 +1297,8 @@ def run(dockable, loggingLevel=logging.ERROR):
     global currentInputTabLayouts
     global currentAllSchematic
     global currentPaneScematic
+    global InputBuffersPath
+    global OutputSnapshotsPath
     global window
     global layout
     global engaged
@@ -1261,6 +1311,16 @@ def run(dockable, loggingLevel=logging.ERROR):
     debugGlobals()
 
     #---- Setup ----
+
+    JSE_Path = c.about(preferences=1)+"/prefs/JSE/"
+    c.sysFile(mkdir=JSE_Path)
+
+    InputBuffersPath = JSE_Path+"InputBuffers/"
+    c.sysFile(mkdir=InputBuffersPath)
+
+    OutputSnapshotsPath = JSE_Path+"OutputSnapshots/"
+    c.sysFile(mkdir=OutputSnapshotsPath)
+
 
     window = c.window(title="JSE", width=950, height=650)
     currentAllSchematic.append([])
