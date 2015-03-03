@@ -193,7 +193,7 @@ def constructSplits( paneSection, buildSchematic ):
     return newPaneLayout,buildSchematic
 
 
-def split( paneSection, re_assign_position, newPaneIsInput=True):
+def split( paneSection, re_assign_position, newPaneIsInput):
     """
     Procedure to split the current pane into 2 panes, or set up the default
     script editor panels if this is the first time it is run
@@ -331,13 +331,26 @@ def split( paneSection, re_assign_position, newPaneIsInput=True):
                            ( paneSection  , oldSectionPaneIndex) ] )
 
 
-    newPaneScematic = [paneConfig[0].capitalize()+"50", newPaneLayout]
-    logger.debug(var1("newPaneScematic",newPaneScematic))
+    newPaneSchematic = [ paneConfig[0].capitalize()+"50", newPaneLayout ]
+    logger.debug(var1("newPaneSchematic",newPaneSchematic))
 
+    newSchematic = deepcopy(newSchematicStart)
+    newSchematic.extend(newPaneSchematic)
+    
+    if newPaneIsInput:  newSectionSchematic = "I1"
+    else:               newSectionSchematic = "O"
+    
+    if oldSectionPaneIndex > newSectionPaneIndex:
+        newSchematic.extend( [newSectionSchematic, newPane] )
+        newSchematic.extend( currentAllSchematic[i][j:j+2] )
+    else:
+        newSchematic.extend( currentAllSchematic[i][j:j+2] )
+        newSchematic.extend( [newSectionSchematic, newPane] )
 
-
+    newSchematic.extend(newSchematicEnding)
 
     refreshAllScematic()
+
     logger.info(defEnd("Splitted"))
     logger.info("")
 
@@ -458,6 +471,22 @@ def deletePane(paneSection):
             are, as well as the grand parent layout. Can't forget about the grannies
 
     '''
+
+    window_IndicesInSchematic = ""
+    pane_IndicesInSchematic = ""
+    for i in xrange(len(currentAllSchematic)):
+        for j in xrange(0, len(currentAllSchematic[i]), 2):
+            if currentAllSchematic[i][j+1] == parentPaneLayout:
+                window_IndicesInSchematic = i
+                pane_IndicesInSchematic = j
+                break
+        if pane_IndicesInSchematic: break
+ 
+    newSchematicStart  = currentAllSchematic[window_IndicesInSchematic][:j]
+    logger.debug(var1("newSchematicStart",newSchematicStart))
+    newSchematicEnding = currentAllSchematic[window_IndicesInSchematic][j+2:]
+    logger.debug(var1("newSchematicEnding",newSchematicEnding))
+    
     parentPaneLayoutChildren        = c.paneLayout( parentPaneLayout, query=True, childArray=True)
     logger.debug(var1(     "parentPaneLayoutChildren",parentPaneLayoutChildren))
 
