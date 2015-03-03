@@ -204,7 +204,7 @@ def split( paneSection, re_assign_position, newPaneIsInput=True):
                                    horizontal/vertical for configuration flag for c.paneLayout()
     """
     global currentInputTabLayouts
-    global currentPaneScematic
+    global currentAllSchematic
     
     logger.info(defStart("Splitting"))
     logger.debug(var1("paneSection",paneSection) )
@@ -231,6 +231,23 @@ def split( paneSection, re_assign_position, newPaneIsInput=True):
     logger.debug(var1("parentPaneLayout children",parentPaneLayoutChildArray ))
     logger.debug(var1(       "child index number",parentPaneLayoutChildArray.index(paneSectionShortName) ))
 
+ 
+
+
+    window_IndicesInSchematic = ""
+    pane_IndicesInSchematic = ""
+    for i in xrange(len(currentAllSchematic)):
+        for j in xrange(0, len(currentAllSchematic[i]), 2):
+            if currentAllSchematic[i][j+1] == paneSection:
+                window_IndicesInSchematic = i
+                pane_IndicesInSchematic = j
+                break
+        if pane_IndicesInSchematic: break
+ 
+    newSchematicStart  = currentAllSchematic[window_IndicesInSchematic][:j]
+    logger.debug(var1("newSchematicStart",newSchematicStart))
+    newSchematicEnding = currentAllSchematic[window_IndicesInSchematic][j+2:]
+    logger.debug(var1("newSchematicEnding",newSchematicEnding))
 
     ''' --- SECOND ---
         Figure out which index of the pane that called split is in.
@@ -296,6 +313,7 @@ def split( paneSection, re_assign_position, newPaneIsInput=True):
     logger.debug(head2("Setting values for new paneLayouts" ) )
     newPaneLayout =  c.paneLayout(configuration=paneConfig, parent=parentPaneLayout)
 
+    
     logger.debug(var1("parentPaneLayout",parentPaneLayout ))
     logger.debug(var1(     "paneSection",paneSection ))
     logger.debug(var1(   "newPaneLayout",newPaneLayout ))
@@ -305,14 +323,21 @@ def split( paneSection, re_assign_position, newPaneIsInput=True):
 
     logger.debug(head2("Assigning new split to current pane" ) )
     c.control(paneSection, edit=True, parent=newPaneLayout)
-    if newPaneIsInput:  c.paneLayout(newPaneLayout, edit=True,
-                                     setPane=[ (createInput( newPaneLayout ) , newSectionPaneIndex),
-                                               (        paneSection          , oldSectionPaneIndex) ] )
-    else:   c.paneLayout(newPaneLayout, edit=True,
-                         setPane=[ ( createOutput(newPaneLayout) , newSectionPaneIndex),
-                                   (        paneSection          , oldSectionPaneIndex) ] )
+    if newPaneIsInput:  newPane = createInput(  newPaneLayout )
+    else:               newPane = createOutput( newPaneLayout )
+    
+    c.paneLayout(newPaneLayout, edit=True,
+                 setPane=[ (   newPane    , newSectionPaneIndex),
+                           ( paneSection  , oldSectionPaneIndex) ] )
 
 
+    newPaneScematic = [paneConfig[0].capitalize()+"50", newPaneLayout]
+    logger.debug(var1("newPaneScematic",newPaneScematic))
+
+
+
+
+    refreshAllScematic()
     logger.info(defEnd("Splitted"))
     logger.info("")
 
