@@ -318,58 +318,63 @@ def split( paneSection, re_assign_position, newPaneIsInput=True):
 
 
 def refreshAllScematic():
-    logger.debug(defStart("Refreshing all schematics"))
     global currentAllSchematic
+    global currentPaneScematic
     schematicForDeletion = []
+    logger.debug(defStart("Refreshing all schematics"))
     logger.debug(var1("currentAllSchematic",currentAllSchematic))
+    if len(currentAllSchematic)
+        for i in xrange(len(currentAllSchematic)):
+            logger.debug( head2("Schematic "+str(i)) )
+            windowSchematic = currentAllSchematic[i]
+            logger.debug(var1("windowSchematic",windowSchematic))
+            
+            fullPathSplit = re.split("\|", windowSchematic[i+1])
+            logger.debug(var1("fullPathSplit",fullPathSplit))
 
-    for i in xrange(len(currentAllSchematic)):
-        logger.debug( head2("Schematic "+str(i)) )
-        windowSchematic = currentAllSchematic[i]
-        logger.debug(var1("windowSchematic",windowSchematic))
+            if not c.window( fullPathSplit[0], q=1, exists=1):
+                logger.debug( head1("Schematic window doesn't exist"))
+                schematicForDeletion.append( i )
+                logger.debug(var1("schematicForDeletion",schematicForDeletion))
+            else:
+                for j in xrange(0 , len(windowSchematic), 2):
+                    treeNode  = windowSchematic[j]
+                    logger.debug(var1("treeNode",treeNode))
+                    
+                    treeNodeType  = windowSchematic[j][0]
+                    logger.debug(var1("treeNodeType",treeNodeType))
+
+                    ctrlOrLay     = windowSchematic[j+1]
+                    logger.debug(var1("ctrlOrLay",ctrlOrLay))              
+
+                    
+                    if treeNodeType == "V":
+                        windowSchematic[j] = treeNodeType+str(c.paneLayout( ctrlOrLay , q=1, paneSize=1)[0])
+                    
+                    elif treeNodeType == "H":
+                        windowSchematic[j] = treeNodeType+str(c.paneLayout( ctrlOrLay , q=1, paneSize=1)[1])
+                    
+                    elif treeNodeType == "I":
+                        childTabLay = c.layout(ctrlOrLay,q=1,childArray=1)[0]
+                        windowSchematic[j] = treeNode+str(c.tabLayout( childTabLay , q=1, selectTabIndex=1) )
+
+                    logger.debug(var1("windowSchematic[i]",windowSchematic[i]))
+
         
-        fullPathSplit = re.split("\|", windowSchematic[i+1])
-        logger.debug(var1("fullPathSplit",fullPathSplit))
-
-        if not c.window( fullPathSplit[0], q=1, exists=1):
-            logger.debug( head1("Schematic window doesn't exist"))
-            schematicForDeletion.append( i )
+        logger.debug( head2("Deleting schematics marked for deletion") )
+        logger.debug(var1("schematicForDeletion",schematicForDeletion)) 
+        # Remove lists from the back to front to avoid out of range issues
+        for i in reversed(schematicForDeletion):
+            currentAllSchematic.pop(i)  
             logger.debug(var1("schematicForDeletion",schematicForDeletion))
-        else:
-            for j in xrange(0 , len(windowSchematic), 2):
-                treeNode  = windowSchematic[j]
-                logger.debug(var1("treeNode",treeNode))
-                
-                treeNodeType  = windowSchematic[j][0]
-                logger.debug(var1("treeNodeType",treeNodeType))
+            logger.debug(var1("currentAllSchematic",currentAllSchematic))
+        
+        logger.debug(var1("final currentAllSchematic",currentAllSchematic))
+        currentPaneScematic = []
+        for i in xrange(0,len(currentAllSchematic[-1]),2):
+            currentPaneScematic.append( currentAllSchematic[-1][i] )
 
-                ctrlOrLay     = windowSchematic[j+1]
-                logger.debug(var1("ctrlOrLay",ctrlOrLay))              
-
-                
-                if treeNodeType == "V":
-                    windowSchematic[j] = treeNodeType+str(c.paneLayout( ctrlOrLay , q=1, paneSize=1)[0])
-                
-                elif treeNodeType == "H":
-                    windowSchematic[j] = treeNodeType+str(c.paneLayout( ctrlOrLay , q=1, paneSize=1)[1])
-                
-                elif treeNodeType == "I":
-                    childTabLay = c.layout(ctrlOrLay,q=1,childArray=1)[0]
-                    windowSchematic[j] = treeNode+str(c.tabLayout( childTabLay , q=1, selectTabIndex=1) )
-
-                logger.debug(var1("windowSchematic[i]",windowSchematic[i]))
-
-    
-    logger.debug( head2("Deleting schematics marked for deletion") )
-    logger.debug(var1("schematicForDeletion",schematicForDeletion)) 
-    # Remove lists from the back to front to avoid out of range issues
-    for i in reversed(schematicForDeletion):
-        currentAllSchematic.pop(i)  
-        logger.debug(var1("schematicForDeletion",schematicForDeletion))
-        logger.debug(var1("currentAllSchematic",currentAllSchematic))
-    
-    logger.debug(var1("final currentAllSchematic",currentAllSchematic))
-    
+        logger.debug(var1("new currentPaneScematic",currentPaneScematic))    
     logger.debug(defStart("Refreshed all schematics"))          
 
 
@@ -614,27 +619,47 @@ def createPaneMenu( ctrl ):
     logger.debug("")
 
 
+def inputPaneMethods(ctrl, method):
+    global OutputSnapshotsPath
+    logger.debug(defStart("Input method processing"))
+    logger.debug(var1("ctrl",ctrl))
+    logger.debug(var1("method",method))
+    
+    if method[:12] == "createScript":
+        print "---Navigate tree and create tab on all layouts---"
+        # c.cmdScrollFieldExecuter(sourceType=method[12:])
+
+    elif method == "createExpression":
+        print "---Need to create expression---"
+        
+
+    logger.debug(defEnd("Input method processed"))
+    logger.debug("")
+
+
+
+
 def createInputMenu( ctrl ):
     logger.debug(defStart("Creating Input Menu"))
     logger.debug(var1("ctrl",ctrl))
 
     c.popupMenu( parent=ctrl , shiftModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
-    c.menuItem(  label="Create Python", radialPosition="E",
-                    command="JSE.split('"+ctrl+"','right')" )
-    c.menuItem(  label="Create MEL", radialPosition="W",
-                    command="JSE.split('"+ctrl+"','left')" )
-    c.menuItem(  label="Below", radialPosition="S",
-                    command="JSE.split('"+ctrl+"','bottom')" )
-    c.menuItem(  label="Create Expression", radialPosition="N",
-                    command="JSE.split('"+ctrl+"','top')" )
 
-    c.menuItem(  label="Hey you! Choose new section location...", enable=False)
-    c.menuItem(  label="Remove This Pane!",
-                    command="JSE.deletePane('"+ctrl+"')")
-    c.menuItem(  label="Save script as...",
-                    command="JSE.saveScript('"+ctrl+"',True)")
-    c.menuItem(  label="Save script...",
-                    command="JSE.saveScript('"+ctrl+"',False)")
+    c.menuItem(  label="Create Tab...", radialPosition="N", subMenu=True)
+    c.menuItem(  label="Create Python", radialPosition="E",
+                    command="JSE.inputPaneMethods('"+ctrl+"','createScriptpython')" )
+    c.menuItem(  label="Create MEL", radialPosition="W",
+                    command="JSE.inputPaneMethods('"+ctrl+"','createScriptmel)" )
+    c.menuItem(  label="Create Expression", radialPosition="N",
+                    command="JSE.inputPaneMethods('"+ctrl+"','createExpression')" )
+
+    c.menuItem(  label="----Input Menu----", enable=False)
+    c.menuItem(  label="",
+                    command="")
+    c.menuItem(  label="",
+                    command="")
+    c.menuItem(  label="",
+                    command="")
 
     logger.debug(defEnd("Created Input Menu"))
     logger.debug("")
@@ -653,9 +678,12 @@ def createExpressionMenu( ctrl ):
                     command="JSE.logger.debug('Unregister Expression')" )
     c.menuItem(  label="Update Expression", radialPosition="N",
                     command="JSE.updateExpr('"+ctrl+"')" )
+
+    c.menuItem(  label="----Expression Menu----", enable=False)
     
     logger.debug(defEnd("Created Expression Menu"))
     logger.debug("")
+
 
 
 def createDebugMenu( ctrl ):
@@ -686,7 +714,7 @@ def createDebugMenu( ctrl ):
     logger.debug("")
 
 
-def outputMethods(ctrl, method):
+def outputPaneMethods(ctrl, method):
     global OutputSnapshotsPath
     logger.debug(defStart("Output method processing"))
     logger.debug(var1("ctrl",ctrl))
@@ -708,7 +736,7 @@ def createOutputMenu( ctrl ):
 
     c.popupMenu( parent=ctrl , shiftModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
     c.menuItem(  label="Snapshot then Wipe", radialPosition="E",
-                    command="JSE.outputMethods('"+ctrl+"','snapshotThenWipe')" )
+                    command="JSE.outputPaneMethods('"+ctrl+"','snapshotThenWipe')" )
     c.menuItem(  label="---", radialPosition="W",
                     command="" )
     c.menuItem(  label="---", radialPosition="S",
@@ -726,7 +754,6 @@ def createOutputMenu( ctrl ):
 
     logger.debug(defEnd("Created Output Menu"))
     logger.debug("")
-
 
 
 def updateExpr(exprPanelayout):
@@ -869,8 +896,9 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation, exprDic={}):
                                                 [attrList,  "bottom", 0]   ),
                                  attachControl=([attrList, "top", 0, objSearchField]) )
         tabLabel = c.expression(n=tabLabel)
-        createPaneMenu(exprPanelayout)
+
         createExpressionMenu(exprPanelayout)
+        createPaneMenu(exprPanelayout)
 
     else:
         inputField = c.cmdScrollFieldExecuter(  sourceType= tabLang,
@@ -886,6 +914,7 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation, exprDic={}):
         # make sure the text is not selected
         c.cmdScrollFieldExecuter(inputField, e=1, select=[0,0] )
 
+        createInputMenu(inputField)
         createPaneMenu(inputField)
 
     c.tabLayout(pTabLayout, e=1, tabLabel= [c.tabLayout(pTabLayout,
@@ -1313,19 +1342,20 @@ def run(dockable, loggingLevel=logging.ERROR):
     #---- Setup ----
 
     JSE_Path = c.about(preferences=1)+"/prefs/JSE/"
-    c.sysFile(mkdir=JSE_Path)
+    c.sysFile("JSE_Path",makeDir=True)
 
     InputBuffersPath = JSE_Path+"InputBuffers/"
-    c.sysFile(mkdir=InputBuffersPath)
+    c.sysFile("InputBuffersPath",makeDir=True)
 
     OutputSnapshotsPath = JSE_Path+"OutputSnapshots/"
-    c.sysFile(mkdir=OutputSnapshotsPath)
+    c.sysFile("OutputSnapshotsPath",makeDir=True)
 
 
     window = c.window(title="JSE", width=950, height=650)
     currentAllSchematic.append([])
     # currentInputTabLayouts.append( c.paneLayout() )
     # newPaneLayout = split( currentInputTabLayouts[-1] )
+    refreshAllScematic()
     newPaneLayout = constructSplits(  c.paneLayout(), deepcopy(currentPaneScematic) )
     
     # Re-populate
