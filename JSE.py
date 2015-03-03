@@ -323,7 +323,7 @@ def refreshAllScematic():
     schematicForDeletion = []
     logger.debug(defStart("Refreshing all schematics"))
     logger.debug(var1("currentAllSchematic",currentAllSchematic))
-    if len(currentAllSchematic)
+    if len(currentAllSchematic[-1]):
         for i in xrange(len(currentAllSchematic)):
             logger.debug( head2("Schematic "+str(i)) )
             windowSchematic = currentAllSchematic[i]
@@ -356,7 +356,7 @@ def refreshAllScematic():
                     
                     elif treeNodeType == "I":
                         childTabLay = c.layout(ctrlOrLay,q=1,childArray=1)[0]
-                        windowSchematic[j] = treeNode+str(c.tabLayout( childTabLay , q=1, selectTabIndex=1) )
+                        windowSchematic[j] = treeNodeType+str(c.tabLayout( childTabLay , q=1, selectTabIndex=1) )
 
                     logger.debug(var1("windowSchematic[i]",windowSchematic[i]))
 
@@ -637,8 +637,6 @@ def inputPaneMethods(ctrl, method):
     logger.debug("")
 
 
-
-
 def createInputMenu( ctrl ):
     logger.debug(defStart("Creating Input Menu"))
     logger.debug(var1("ctrl",ctrl))
@@ -649,10 +647,11 @@ def createInputMenu( ctrl ):
     c.menuItem(  label="Create Python", radialPosition="E",
                     command="JSE.inputPaneMethods('"+ctrl+"','createScriptpython')" )
     c.menuItem(  label="Create MEL", radialPosition="W",
-                    command="JSE.inputPaneMethods('"+ctrl+"','createScriptmel)" )
+                    command="JSE.inputPaneMethods('"+ctrl+"','createScriptmel')" )
     c.menuItem(  label="Create Expression", radialPosition="N",
                     command="JSE.inputPaneMethods('"+ctrl+"','createExpression')" )
-
+    
+    c.setParent("..", menu=True)
     c.menuItem(  label="----Input Menu----", enable=False)
     c.menuItem(  label="",
                     command="")
@@ -685,7 +684,6 @@ def createExpressionMenu( ctrl ):
     logger.debug("")
 
 
-
 def createDebugMenu( ctrl ):
     logger.debug(defStart("Creating Debug Menu"))
     logger.debug(var1("ctrl",ctrl))
@@ -696,8 +694,8 @@ def createDebugMenu( ctrl ):
                     command="JSE.wipeOptionVars()" )
     c.menuItem(  label="refreshAllScematic", radialPosition="W",
                     command="JSE.refreshAllScematic()" )
-    # c.menuItem(  label="", radialPosition="S",
-    #                 command="" )
+    c.menuItem(  label="debugGlobals", radialPosition="S",
+                    command="JSE.debugGlobals()" )
     c.menuItem(  label="Reload", radialPosition="N",
                     command="reload(JSE)" )
 
@@ -714,17 +712,28 @@ def createDebugMenu( ctrl ):
     logger.debug("")
 
 
-def outputPaneMethods(ctrl, method):
+def outputPaneMethods(ctrl, method, *arg):
     global OutputSnapshotsPath
     logger.debug(defStart("Output method processing"))
     logger.debug(var1("ctrl",ctrl))
     logger.debug(var1("method",method))
     
     if method == "snapshotThenWipe":
-        logger.debug(var1("snapshot to file",OutputSnapshotsPath+c.date(format="snapshot-YYYY-MMm-DDd-hhhmmmss.txt")))
-        with open(OutputSnapshotsPath+c.date(format="snapshot-YYYY-MMm-DDd-hhhmmmss.txt"),"w") as snapshotFile:
+        newSnapshotFileName = OutputSnapshotsPath+c.date(format="YYYY-MMm-DDd-hhhmmmss.txt")
+        logger.debug( var1("snapshot to file", newSnapshotFileName ))
+        
+        with open(newSnapshotFileName,"w") as snapshotFile:
             snapshotFile.write(c.cmdScrollFieldReporter(ctrl, q=1, text=1))
         c.cmdScrollFieldReporter(ctrl, e=1, clear=1)
+
+        snapshotList = c.getFileList(folder=OutputSnapshotsPath, filespec='*' )
+        logger.debug( var1("new snapshotList", snapshotList ))
+        for i in snapshotList[20:]:
+            logger.debug( var1("deleting", i ))            
+            c.sysFile(OutputSnapshotsPath+i,delete=1)  
+    
+    elif method == "wipe":        
+        c.cmdScrollFieldReporter(ctrl, e=1, clear=1)          
 
     logger.debug(defEnd("Output method processed"))
     logger.debug("")
@@ -737,6 +746,8 @@ def createOutputMenu( ctrl ):
     c.popupMenu( parent=ctrl , shiftModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
     c.menuItem(  label="Snapshot then Wipe", radialPosition="E",
                     command="JSE.outputPaneMethods('"+ctrl+"','snapshotThenWipe')" )
+    c.menuItem(  optionBox=True, radialPosition="E",
+                    command="JSE.outputPaneMethods('"+ctrl+"','wipe')" )
     c.menuItem(  label="---", radialPosition="W",
                     command="" )
     c.menuItem(  label="---", radialPosition="S",
@@ -1342,13 +1353,13 @@ def run(dockable, loggingLevel=logging.ERROR):
     #---- Setup ----
 
     JSE_Path = c.about(preferences=1)+"/prefs/JSE/"
-    c.sysFile("JSE_Path",makeDir=True)
+    c.sysFile(JSE_Path,makeDir=True)
 
     InputBuffersPath = JSE_Path+"InputBuffers/"
-    c.sysFile("InputBuffersPath",makeDir=True)
+    c.sysFile(InputBuffersPath,makeDir=True)
 
     OutputSnapshotsPath = JSE_Path+"OutputSnapshots/"
-    c.sysFile("OutputSnapshotsPath",makeDir=True)
+    c.sysFile(OutputSnapshotsPath,makeDir=True)
 
 
     window = c.window(title="JSE", width=950, height=650)
@@ -1356,6 +1367,7 @@ def run(dockable, loggingLevel=logging.ERROR):
     # currentInputTabLayouts.append( c.paneLayout() )
     # newPaneLayout = split( currentInputTabLayouts[-1] )
     refreshAllScematic()
+    debugGlobals()
     newPaneLayout = constructSplits(  c.paneLayout(), deepcopy(currentPaneScematic) )
     
     # Re-populate
