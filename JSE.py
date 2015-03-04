@@ -827,6 +827,7 @@ def scriptEditorMethods(ctrl, method, *arg):
     logger.debug(var1("ctrl",ctrl))
     logger.debug(var1("method",method))
 
+    '''
     if method == "run":
         logger.debug(head2("Executing script text")
 
@@ -842,7 +843,6 @@ def scriptEditorMethods(ctrl, method, *arg):
 
         if scriptIsMEL: melEval("evalDeferred %s")
         else:           c.evalDeferred( {$commandToExecute} )
-
 
 
 
@@ -891,6 +891,7 @@ def scriptEditorMethods(ctrl, method, *arg):
 
 
     elif method == "wipe":
+    '''
 
     logger.debug(defEnd("Script editor method processed"))
     logger.debug("")
