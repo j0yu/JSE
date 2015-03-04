@@ -244,9 +244,9 @@ def split( paneSection, re_assign_position, newPaneIsInput):
                 break
         if pane_IndicesInSchematic: break
 
-    newSchematicStart  = currentAllSchematic[window_IndicesInSchematic][:j]
+    newSchematicStart  = currentAllSchematic[window_IndicesInSchematic][:pane_IndicesInSchematic]
     logger.debug(var1("newSchematicStart",newSchematicStart))
-    newSchematicEnding = currentAllSchematic[window_IndicesInSchematic][j+2:]
+    newSchematicEnding = currentAllSchematic[window_IndicesInSchematic][pane_IndicesInSchematic+2:]
     logger.debug(var1("newSchematicEnding",newSchematicEnding))
 
     ''' --- SECOND ---
@@ -335,20 +335,25 @@ def split( paneSection, re_assign_position, newPaneIsInput):
     logger.debug(var1("newPaneSchematic",newPaneSchematic))
 
     newSchematic = deepcopy(newSchematicStart)
-    newSchematic.extend(newPaneSchematic)
+    logger.debug(var1("newSchematic",newSchematic))
+    newSchematic.extend( deepcopy(newPaneSchematic) )
+    logger.debug(var1("newSchematic",newSchematic))
 
     if newPaneIsInput:  newSectionSchematic = "I1"
     else:               newSectionSchematic = "O"
 
     if oldSectionPaneIndex > newSectionPaneIndex:
-        newSchematic.extend( [newSectionSchematic, newPane] )
-        newSchematic.extend( currentAllSchematic[i][j:j+2] )
+        newSchematic.extend( deepcopy([newSectionSchematic, newPane]) )
+        newSchematic.extend( deepcopy(currentAllSchematic[window_IndicesInSchematic][pane_IndicesInSchematic:pane_IndicesInSchematic+2]) )
     else:
-        newSchematic.extend( currentAllSchematic[i][j:j+2] )
-        newSchematic.extend( [newSectionSchematic, newPane] )
+        newSchematic.extend( deepcopy(currentAllSchematic[window_IndicesInSchematic][pane_IndicesInSchematic:pane_IndicesInSchematic+2] ))
+        newSchematic.extend( deepcopy([newSectionSchematic, newPane] ))
+    logger.debug(var1("newSchematic",newSchematic))
 
-    newSchematic.extend(newSchematicEnding)
+    newSchematic.extend( deepcopy(newSchematicEnding) )
+    logger.debug(var1("newSchematic",newSchematic))
 
+    currentAllSchematic[window_IndicesInSchematic] = deepcopy(newSchematic)
     refreshAllScematic()
 
     logger.info(defEnd("Splitted"))
@@ -472,21 +477,6 @@ def deletePane(paneSection):
 
     '''
 
-    window_IndicesInSchematic = ""
-    pane_IndicesInSchematic = ""
-    for i in xrange(len(currentAllSchematic)):
-        for j in xrange(0, len(currentAllSchematic[i]), 2):
-            if currentAllSchematic[i][j+1] == parentPaneLayout:
-                window_IndicesInSchematic = i
-                pane_IndicesInSchematic = j
-                break
-        if pane_IndicesInSchematic: break
-
-    newSchematicStart  = currentAllSchematic[window_IndicesInSchematic][:j]
-    logger.debug(var1("newSchematicStart",newSchematicStart))
-    newSchematicEnding = currentAllSchematic[window_IndicesInSchematic][j+2:]
-    logger.debug(var1("newSchematicEnding",newSchematicEnding))
-
     parentPaneLayoutChildren        = c.paneLayout( parentPaneLayout, query=True, childArray=True)
     logger.debug(var1(     "parentPaneLayoutChildren",parentPaneLayoutChildren))
 
@@ -512,6 +502,24 @@ def deletePane(paneSection):
     otherParentPaneSectionNum   = (parentPaneLayoutSectionNumber % 2) + 1
     logger.debug(var1(    "otherParentPaneSectionNum",otherParentPaneSectionNum))
 
+    window_IndicesInSchematic = ""
+    pane_IndicesInSchematic = ""
+    surv__IndicesInSchematic = ""
+    for i in xrange(len(currentAllSchematic)):
+        for j in xrange(0, len(currentAllSchematic[i]), 2):
+            logger.debug(var1("Match?", (currentAllSchematic[i][j+1] == parentPaneLayout+"|"+parentPaneLayoutChildren[otherPaneChildNum])  ))
+            if currentAllSchematic[i][j+1] == parentPaneLayout:
+                window_IndicesInSchematic = i
+                pane_IndicesInSchematic = j
+                logger.debug(var1("window_IndicesInSchematic",window_IndicesInSchematic))
+                logger.debug(var1("pane_IndicesInSchematic",pane_IndicesInSchematic))
+            elif currentAllSchematic[i][j+1] == parentPaneLayout+"|"+parentPaneLayoutChildren[otherPaneChildNum]:
+                surv__IndicesInSchematic = j
+                logger.debug(var1("surv__IndicesInSchematic",surv__IndicesInSchematic))
+                break
+        if surv__IndicesInSchematic: break
+
+
     ''' --- FINALLY ---
             Re-parenting and assigning the control to the grand parent layout
             and deleting the pane layout that it previously resided under
@@ -520,6 +528,22 @@ def deletePane(paneSection):
     c.paneLayout( grandParentPaneLayout, edit=True,
                     setPane=[ parentPaneLayoutChildren[otherPaneChildNum], parentPaneLayoutSectionNumber ])
     # c.deleteUI( parentPaneLayout ) # Segmentation fault causer in 2014 SP2 Linux
+
+    newSchematicStart    = currentAllSchematic[window_IndicesInSchematic][:pane_IndicesInSchematic]
+    logger.debug(var1(   "newSchematicStart",newSchematicStart))
+    newSchematicSurvivor = currentAllSchematic[window_IndicesInSchematic][surv__IndicesInSchematic:surv__IndicesInSchematic+2]
+    logger.debug(var1("newSchematicSurvivor",newSchematicSurvivor))
+    newSchematicEnding   = currentAllSchematic[window_IndicesInSchematic][pane_IndicesInSchematic+6:]
+    logger.debug(var1(  "newSchematicEnding",newSchematicEnding))
+
+    newSchematic = []
+    newSchematic.extend( deepcopy(newSchematicStart) )
+    newSchematic.extend( deepcopy(newSchematicSurvivor) )
+    newSchematic.extend( deepcopy(newSchematicEnding) )
+
+
+    currentAllSchematic[window_IndicesInSchematic] = deepcopy(newSchematic)
+    refreshAllScematic()
 
     logger.info(defEnd("Deleted Pane") )
     logger.info("")
@@ -592,22 +616,22 @@ def createPaneMenu( ctrl ):
 
     c.popupMenu( parent=ctrl , altModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
     c.menuItem(  label="New Right", radialPosition="E",
-                    command="JSE.split('"+ctrl+"','right')" )
+                    command="JSE.split('"+ctrl+"','right',True)" )
     c.menuItem(  label="New Right", radialPosition="E", optionBox=True,
                     command="JSE.split('"+ctrl+"','right',False)" )
 
     c.menuItem(  label="New Left", radialPosition="W",
-                    command="JSE.split('"+ctrl+"','left')" )
+                    command="JSE.split('"+ctrl+"','left',True)" )
     c.menuItem(  label="New Left", radialPosition="W", optionBox=True,
                     command="JSE.split('"+ctrl+"','left', False)" )
 
     c.menuItem(  label="New Below", radialPosition="S",
-                    command="JSE.split('"+ctrl+"','bottom')" )
+                    command="JSE.split('"+ctrl+"','bottom',True)" )
     c.menuItem(  label="New Below", radialPosition="S", optionBox=True,
                     command="JSE.split('"+ctrl+"','bottom', False)" )
 
     c.menuItem(  label="New Above", radialPosition="N",
-                    command="JSE.split('"+ctrl+"','top')" )
+                    command="JSE.split('"+ctrl+"','top',True)" )
     c.menuItem(  label="New Above", radialPosition="N", optionBox=True,
                     command="JSE.split('"+ctrl+"','top', False)" )
 
@@ -1041,8 +1065,7 @@ def createInput( parentUI, activeTabIndex=1 ):
     logger.debug(var1("parentUI",parentUI))
 
     inputLayout = c.formLayout(parent = parentUI) # formLayout that will hold all the tabs and command line text field
-    inputTabsLay = c.tabLayout(selectCommand="JSE.logger.debug('selected a tab')",
-                               changeCommand="JSE.logger.debug('tab change command')",
+    inputTabsLay = c.tabLayout(changeCommand="JSE.refreshAllScematic()",
                                visibleChangeCommand="JSE.logger.debug('visibility changed')") # tabLayout that will hold all the input tab buffers
 
     logger.debug(var1("inputLayout",inputLayout))
