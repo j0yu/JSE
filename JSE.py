@@ -27,7 +27,7 @@ currentAllSchematic = []    # e.g. [ ["V50", "window4|paneLayout19|paneLayout20"
                             #         "I1" , "window4|paneLayout19|paneLayout20|formLayout123"],
                             #        ["V31", "window5|paneLayout21|paneLayout22",
                             #         "O"  , "window5|paneLayout21|paneLayout22|cmdScrollFieldReporter10"],
-                            #         "I3" , "window5|paneLayout21|paneLayout22|formLayout343"] 
+                            #         "I3" , "window5|paneLayout21|paneLayout22|formLayout343"]
                             #      ]
 
 window = ""                 # The JSE window control
@@ -69,7 +69,7 @@ def navigateToParentPaneLayout(paneSection):
     (returned)              input/output section belong to.
                             The returned value can be different to the parameter
                             value that was passed in
-    
+
     parentPaneLayout    :   paneLayout that is the parent of the pane that
     (returned)              called the split, initially initialised to paneSection
                             in order to start the parent traversal algorithm
@@ -90,7 +90,7 @@ def navigateToParentPaneLayout(paneSection):
     logger.debug(var1(     "parent paneLayout is",parentPaneLayout ) )
     logger.debug(var1(   "child is (paneSection)",paneSection))
     logger.debug(var1(                 "(exist?)",c.control(paneSection,q=1,ex=1)) )
-    
+
     return paneSection,parentPaneLayout
 
 
@@ -123,7 +123,7 @@ def constructSplits( paneSection, buildSchematic ):
     logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
 
 
-    if paneCfg[0] == "V" : 
+    if paneCfg[0] == "V" :
         paneCfgTxt = "vertical2"
         paneEditSize = [1, int(paneCfg[1:]), 100]
     elif paneCfg[0] == "H" :
@@ -144,7 +144,7 @@ def constructSplits( paneSection, buildSchematic ):
         paneChild1,buildSchematic = constructSplits( newPaneLayout, buildSchematic)
         logger.debug(var1("buildSchematic becomes",buildSchematic))
         logger.debug(var1("paneChild1",paneChild1))
-    
+
     elif buildSchematic[0][0]=="I":
         currentAllSchematic[-1].append(buildSchematic[0])
         paneChild1 = createInput(newPaneLayout, int(buildSchematic.pop(0)[1:]))
@@ -165,7 +165,7 @@ def constructSplits( paneSection, buildSchematic ):
         paneChild2,buildSchematic = constructSplits( newPaneLayout, buildSchematic)
         logger.debug(var1("buildSchematic becomes",buildSchematic))
         logger.debug(var1("paneChild2",paneChild2))
-    
+
     elif buildSchematic[0][0]=="I":
         currentAllSchematic[-1].append(buildSchematic[0])
         paneChild2 = createInput(newPaneLayout, int(buildSchematic.pop(0)[1:]))
@@ -179,15 +179,15 @@ def constructSplits( paneSection, buildSchematic ):
         logger.debug(var1("buildSchematic becomes",buildSchematic))
         currentAllSchematic[-1].append(paneChild2)
         logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
-    
-    
+
+
     logger.debug(var1("newPaneLayout",newPaneLayout) )
     c.paneLayout(newPaneLayout, edit=True,
                  paneSize=paneEditSize,
                  setPane=[ (paneChild1 , 1),
                            (paneChild2 , 2) ] )
 
-    
+
     logger.info(defEnd("Constructed current split"))
     logger.info("")
     return newPaneLayout,buildSchematic
@@ -205,7 +205,7 @@ def split( paneSection, re_assign_position, newPaneIsInput):
     """
     global currentInputTabLayouts
     global currentAllSchematic
-    
+
     logger.info(defStart("Splitting"))
     logger.debug(var1("paneSection",paneSection) )
     logger.debug(var1("re_assign_position",re_assign_position) )
@@ -223,15 +223,15 @@ def split( paneSection, re_assign_position, newPaneIsInput):
                                 in order to start the parent traversal algorithm
     '''
     paneSection,parentPaneLayout = navigateToParentPaneLayout(paneSection)
-    
+
     paneSectionShortName = re.split("\\|",paneSection)[-1]
     logger.debug(var1(              "(shortName)",paneSectionShortName ) )
-    
+
     parentPaneLayoutChildArray = c.paneLayout( parentPaneLayout, query=True, ca=True)
     logger.debug(var1("parentPaneLayout children",parentPaneLayoutChildArray ))
     logger.debug(var1(       "child index number",parentPaneLayoutChildArray.index(paneSectionShortName) ))
 
- 
+
 
 
     window_IndicesInSchematic = ""
@@ -243,7 +243,7 @@ def split( paneSection, re_assign_position, newPaneIsInput):
                 pane_IndicesInSchematic = j
                 break
         if pane_IndicesInSchematic: break
- 
+
     newSchematicStart  = currentAllSchematic[window_IndicesInSchematic][:j]
     logger.debug(var1("newSchematicStart",newSchematicStart))
     newSchematicEnding = currentAllSchematic[window_IndicesInSchematic][j+2:]
@@ -301,11 +301,11 @@ def split( paneSection, re_assign_position, newPaneIsInput):
         paneConfig = 'vertical2'
         newSectionPaneIndex = 2
         oldSectionPaneIndex = 1
-    
-    else: 
+
+    else:
         logger.critical("re_assign_position not matched with top, bottom, left or right!")
         logger.critical(var1("re_assign_position",re_assign_position))
-    
+
     logger.debug(var1(         "paneConfig",paneConfig ))
     logger.debug(var1("newSectionPaneIndex",newSectionPaneIndex ))
     logger.debug(var1("oldSectionPaneIndex",oldSectionPaneIndex ))
@@ -313,7 +313,7 @@ def split( paneSection, re_assign_position, newPaneIsInput):
     logger.debug(head2("Setting values for new paneLayouts" ) )
     newPaneLayout =  c.paneLayout(configuration=paneConfig, parent=parentPaneLayout)
 
-    
+
     logger.debug(var1("parentPaneLayout",parentPaneLayout ))
     logger.debug(var1(     "paneSection",paneSection ))
     logger.debug(var1(   "newPaneLayout",newPaneLayout ))
@@ -325,7 +325,7 @@ def split( paneSection, re_assign_position, newPaneIsInput):
     c.control(paneSection, edit=True, parent=newPaneLayout)
     if newPaneIsInput:  newPane = createInput(  newPaneLayout )
     else:               newPane = createOutput( newPaneLayout )
-    
+
     c.paneLayout(newPaneLayout, edit=True,
                  setPane=[ (   newPane    , newSectionPaneIndex),
                            ( paneSection  , oldSectionPaneIndex) ] )
@@ -336,10 +336,10 @@ def split( paneSection, re_assign_position, newPaneIsInput):
 
     newSchematic = deepcopy(newSchematicStart)
     newSchematic.extend(newPaneSchematic)
-    
+
     if newPaneIsInput:  newSectionSchematic = "I1"
     else:               newSectionSchematic = "O"
-    
+
     if oldSectionPaneIndex > newSectionPaneIndex:
         newSchematic.extend( [newSectionSchematic, newPane] )
         newSchematic.extend( currentAllSchematic[i][j:j+2] )
@@ -366,7 +366,7 @@ def refreshAllScematic():
             logger.debug( head2("Schematic "+str(i)) )
             windowSchematic = currentAllSchematic[i]
             logger.debug(var1("windowSchematic",windowSchematic))
-            
+
             fullPathSplit = re.split("\|", windowSchematic[i+1])
             logger.debug(var1("fullPathSplit",fullPathSplit))
 
@@ -378,42 +378,42 @@ def refreshAllScematic():
                 for j in xrange(0 , len(windowSchematic), 2):
                     treeNode  = windowSchematic[j]
                     logger.debug(var1("treeNode",treeNode))
-                    
+
                     treeNodeType  = windowSchematic[j][0]
                     logger.debug(var1("treeNodeType",treeNodeType))
 
                     ctrlOrLay     = windowSchematic[j+1]
-                    logger.debug(var1("ctrlOrLay",ctrlOrLay))              
+                    logger.debug(var1("ctrlOrLay",ctrlOrLay))
 
-                    
+
                     if treeNodeType == "V":
                         windowSchematic[j] = treeNodeType+str(c.paneLayout( ctrlOrLay , q=1, paneSize=1)[0])
-                    
+
                     elif treeNodeType == "H":
                         windowSchematic[j] = treeNodeType+str(c.paneLayout( ctrlOrLay , q=1, paneSize=1)[1])
-                    
+
                     elif treeNodeType == "I":
                         childTabLay = c.layout(ctrlOrLay,q=1,childArray=1)[0]
                         windowSchematic[j] = treeNodeType+str(c.tabLayout( childTabLay , q=1, selectTabIndex=1) )
 
                     logger.debug(var1("windowSchematic[i]",windowSchematic[i]))
 
-        
+
         logger.debug( head2("Deleting schematics marked for deletion") )
-        logger.debug(var1("schematicForDeletion",schematicForDeletion)) 
+        logger.debug(var1("schematicForDeletion",schematicForDeletion))
         # Remove lists from the back to front to avoid out of range issues
         for i in reversed(schematicForDeletion):
-            currentAllSchematic.pop(i)  
+            currentAllSchematic.pop(i)
             logger.debug(var1("schematicForDeletion",schematicForDeletion))
             logger.debug(var1("currentAllSchematic",currentAllSchematic))
-        
+
         logger.debug(var1("final currentAllSchematic",currentAllSchematic))
         currentPaneScematic = []
         for i in xrange(0,len(currentAllSchematic[-1]),2):
             currentPaneScematic.append( currentAllSchematic[-1][i] )
 
-        logger.debug(var1("new currentPaneScematic",currentPaneScematic))    
-    logger.debug(defStart("Refreshed all schematics"))          
+        logger.debug(var1("new currentPaneScematic",currentPaneScematic))
+    logger.debug(defStart("Refreshed all schematics"))
 
 
 def attrInsert(cmdField, objSearchField, attrField):
@@ -430,7 +430,7 @@ def attrInsert(cmdField, objSearchField, attrField):
 
     logger.debug(head2("Insert it into the expression field (at current cursor pos)"))
     c.cmdScrollFieldExecuter(cmdField, e=1, insertText="{0}.{1}".format(objText, attrText))
-    
+
     logger.debug(defEnd("Inserted attribute to expression field"))
     logger.debug("")
 
@@ -481,12 +481,12 @@ def deletePane(paneSection):
                 pane_IndicesInSchematic = j
                 break
         if pane_IndicesInSchematic: break
- 
+
     newSchematicStart  = currentAllSchematic[window_IndicesInSchematic][:j]
     logger.debug(var1("newSchematicStart",newSchematicStart))
     newSchematicEnding = currentAllSchematic[window_IndicesInSchematic][j+2:]
     logger.debug(var1("newSchematicEnding",newSchematicEnding))
-    
+
     parentPaneLayoutChildren        = c.paneLayout( parentPaneLayout, query=True, childArray=True)
     logger.debug(var1(     "parentPaneLayoutChildren",parentPaneLayoutChildren))
 
@@ -534,20 +534,20 @@ def listObjAttr(objTextField, scrollListToOutput):
     c.textScrollList( scrollListToOutput, e=1, removeAll=1)
     objInQuestion = c.textFieldGrp( objTextField, q=1, text=1)
     logger.debug(var1(     "objInQuestion",objInQuestion))
-    
+
     try:    attrLong = c.listAttr(objInQuestion)
-    except: 
+    except:
         c.textScrollList( scrollListToOutput, e=1, append=["--NOTHING FOUND--"], enable=False)
         return
     attrShrt = c.listAttr(objInQuestion, shortNames=1)
 
     logger.debug(var1(          "attrLong",attrLong))
     logger.debug(var1(          "attrShrt",attrShrt))
-    
+
     attrTxt = []
-    for i,j in zip(attrLong,attrShrt): 
+    for i,j in zip(attrLong,attrShrt):
         attrTxt.append( "{0} ({1})".format(i,j) )
-    
+
     sorted(attrTxt)
     c.textScrollList( scrollListToOutput, e=1, append=attrTxt, enable=True)
     logger.debug(defEnd("Listed object attributes") )
@@ -644,7 +644,7 @@ def createPaneMenu( ctrl ):
                     command="JSE.split('"+ctrl+"','right')" )
     c.menuItem(  label="New Right", radialPosition="E", optionBox=True,
                     command="JSE.split('"+ctrl+"','right',False)" )
-    
+
     c.menuItem(  label="New Left", radialPosition="W",
                     command="JSE.split('"+ctrl+"','left')" )
     c.menuItem(  label="New Left", radialPosition="W", optionBox=True,
@@ -678,14 +678,14 @@ def inputPaneMethods(ctrl, method):
     logger.debug(defStart("Input method processing"))
     logger.debug(var1("ctrl",ctrl))
     logger.debug(var1("method",method))
-    
+
     if method[:12] == "createScript":
         print "---Navigate tree and create tab on all layouts---"
         # c.cmdScrollFieldExecuter(sourceType=method[12:])
 
     elif method == "createExpression":
         print "---Need to create expression---"
-        
+
 
     logger.debug(defEnd("Input method processed"))
     logger.debug("")
@@ -704,7 +704,7 @@ def createInputMenu( ctrl ):
                     command="JSE.inputPaneMethods('"+ctrl+"','createScriptmel')" )
     c.menuItem(  label="Create Expression", radialPosition="N",
                     command="JSE.inputPaneMethods('"+ctrl+"','createExpression')" )
-    
+
     c.setParent("..", menu=True)
     c.menuItem(  label="----Input Menu----", enable=False)
     c.menuItem(  label="",
@@ -733,7 +733,7 @@ def createExpressionMenu( ctrl ):
                     command="JSE.updateExpr('"+ctrl+"')" )
 
     c.menuItem(  label="----Expression Menu----", enable=False)
-    
+
     logger.debug(defEnd("Created Expression Menu"))
     logger.debug("")
 
@@ -761,7 +761,7 @@ def createDebugMenu( ctrl ):
     c.menuItem(  label="Error",  command="JSE.run(0,JSE.logging.ERROR)")
     c.menuItem(  optionBox=True, command="JSE.logger.setLevel(JSE.logging.ERROR)")
 
-    
+
     logger.debug(defEnd("Created Debug Menu"))
     logger.debug("")
 
@@ -771,11 +771,11 @@ def outputPaneMethods(ctrl, method, *arg):
     logger.debug(defStart("Output method processing"))
     logger.debug(var1("ctrl",ctrl))
     logger.debug(var1("method",method))
-    
+
     if method == "snapshotThenWipe":
         newSnapshotFileName = OutputSnapshotsPath+c.date(format="YYYY-MMm-DDd-hhhmmmss.txt")
         logger.debug( var1("snapshot to file", newSnapshotFileName ))
-        
+
         with open(newSnapshotFileName,"w") as snapshotFile:
             snapshotFile.write(c.cmdScrollFieldReporter(ctrl, q=1, text=1))
         c.cmdScrollFieldReporter(ctrl, e=1, clear=1)
@@ -783,11 +783,11 @@ def outputPaneMethods(ctrl, method, *arg):
         snapshotList = c.getFileList(folder=OutputSnapshotsPath, filespec='*' )
         logger.debug( var1("new snapshotList", snapshotList ))
         for i in snapshotList[20:]:
-            logger.debug( var1("deleting", i ))            
-            c.sysFile(OutputSnapshotsPath+i,delete=1)  
-    
-    elif method == "wipe":        
-        c.cmdScrollFieldReporter(ctrl, e=1, clear=1)          
+            logger.debug( var1("deleting", i ))
+            c.sysFile(OutputSnapshotsPath+i,delete=1)
+
+    elif method == "wipe":
+        c.cmdScrollFieldReporter(ctrl, e=1, clear=1)
 
     logger.debug(defEnd("Output method processed"))
     logger.debug("")
@@ -841,28 +841,28 @@ def updateExpr(exprPanelayout):
 
     logger.debug(head2("Get tab name for expression name"))
     tabChildShort = re.split("\|",exprPanelayout)[-1]
-    logger.debug(var1( "tabChildShort", tabChildShort)) 
-    logger.debug(var1("exprPanelayout", exprPanelayout)) 
-    logger.debug(var1(      "(parent)", c.layout( exprPanelayout, q=1,parent=1))) 
+    logger.debug(var1( "tabChildShort", tabChildShort))
+    logger.debug(var1("exprPanelayout", exprPanelayout))
+    logger.debug(var1(      "(parent)", c.layout( exprPanelayout, q=1,parent=1)))
     allTabLabels = c.tabLayout( c.layout( exprPanelayout, q=1,parent=1), q=1, tabLabel=1)
     allTabChild  = c.tabLayout( c.layout( exprPanelayout, q=1,parent=1), q=1, ca=1)
 
     for i,j in zip(allTabLabels,allTabChild):
-        if j==tabChildShort: currentTabLabel = i    
+        if j==tabChildShort: currentTabLabel = i
 
-    logger.debug(var1(       "exprText",exprText)) 
-    logger.debug(var1("currentTabLabel",currentTabLabel)) 
-    logger.debug(var1(     "defObjText",defObjText)) 
+    logger.debug(var1(       "exprText",exprText))
+    logger.debug(var1("currentTabLabel",currentTabLabel))
+    logger.debug(var1(     "defObjText",defObjText))
     logger.debug(var1(      "evalValue",evalValue))
     logger.debug(var1(  "convUnitValue",convUnitValue))
 
-    c.expression(currentTabLabel,e=1, string=exprText, 
-                                        name=currentTabLabel, 
-                                      object=defObjText, 
+    c.expression(currentTabLabel,e=1, string=exprText,
+                                        name=currentTabLabel,
+                                      object=defObjText,
                               alwaysEvaluate=evalValue,
                               unitConversion=convUnitValue )
 
-    
+
     c.cmdScrollFieldExecuter( cmdField, e=1, text=c.expression(currentTabLabel,q=1, string=1) )
 
     logger.debug(defEnd("Created/Saved Expression"))
@@ -872,10 +872,10 @@ def updateExpr(exprPanelayout):
 def createOutput( parentPanelLayout ):
     logger.info(defStart("Creating output"))
     logger.debug(var1("parentPanelLayout",parentPanelLayout))
-    
+
     output = c.cmdScrollFieldReporter(parent = parentPanelLayout, backgroundColor=[0.1,0.1,0.1] )
     logger.debug(var1("output",output))
-    
+
     createPaneMenu( output )
     createDebugMenu( output )
     createOutputMenu( output )
@@ -947,11 +947,11 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation, exprDic={}):
         attrForm = c.formLayout( parent = exprPanelayout)
         #--------------------------------------------------------
         objSearchField  = c.textFieldGrp( parent = attrForm, placeholderText="Search obj for attr", w=120 )
-        attrList      = c.textScrollList( parent = attrForm, append=["--NOTHING FOUND--"], enable=False) 
-        
+        attrList      = c.textScrollList( parent = attrForm, append=["--NOTHING FOUND--"], enable=False)
+
         c.textFieldGrp( objSearchField, e=1, textChangedCommand="JSE.listObjAttr('"+objSearchField+"','"+attrList+"')" )
         c.textScrollList(     attrList, e=1, doubleClickCommand="JSE.attrInsert('"+inputField+"','"+objSearchField+"','"+attrList+"')" )
-        
+
         logger.debug(var1("textChangedCommand","JSE.listObjAttr('"+objSearchField+"','"+attrList+"')"))
         c.formLayout(attrForm, e=1, attachForm=([objSearchField, "top", 0],
                                                 [objSearchField, "left", 0],
@@ -1053,8 +1053,8 @@ def createInput( parentUI, activeTabIndex=1 ):
                 currentInputTabType =   c.optionVar(q="ScriptEditorExecuterTypeArray")
                 currentInputTabLabels = c.optionVar(q="ScriptEditorExecuterLabelArray")
                 for i in range( len(currentInputTabType) ):
-                    if i == 0: currentInputTabFiles.append("commandExecuter")
-                    else     : currentInputTabFiles.append("commandExecuter-"+str(i-1))
+                    if i == 0: currentInputTabFiles.append( c.about(preferences=True)+"/prefs/scriptEditorTemp/commandExecuter")
+                    else     : currentInputTabFiles.append( c.about(preferences=True)+"/prefs/scriptEditorTemp/commandExecuter-"+str(i-1))
 
                 # Still need to sort out the code stored when SE haven't been loaded in current session of Maya
 
@@ -1094,7 +1094,7 @@ def createInput( parentUI, activeTabIndex=1 ):
     else:
         logger.debug(var1("len(currentInputTabLabels)",len(currentInputTabLabels)))
         logger.debug(var1( "len(currentInputTabFiles)",len(currentInputTabFiles)))
-        
+
         logger.debug(head2("Making the script editor tabs"))
         for i in xrange( len(currentInputTabLabels) ):
             if currentInputTabType[i] == "python": fileExt = "py"
@@ -1165,7 +1165,7 @@ def saveAllTabs():
     global InputBuffersPath
 
     logger.info(defStart("Saving All"))
-    
+
     logger.debug(var1("InputBuffersPath",InputBuffersPath))
     debugGlobals()
 
@@ -1196,7 +1196,7 @@ def saveAllTabs():
     """
     for i in range( len( currentInputTabType ) ):
         """
-        If it is the default maya script editor, don't bother "Save to File" as this 
+        If it is the default maya script editor, don't bother "Save to File" as this
         situation only happens when we are hijacking Maya's settings and contents
         """
         if re.match("^commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]): currentInputTabFiles[i]=""
@@ -1208,7 +1208,7 @@ def saveAllTabs():
 
             c.cmdScrollFieldExecuter(currentInputTabs[i], e=1,
                                      storeContents=InputBuffersPath+"JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt)
-            
+
 
 
             """
@@ -1396,7 +1396,7 @@ def run(dockable, loggingLevel=logging.ERROR):
     global window
     global layout
     global engaged
-    
+
     # Logger levels: CRITICAL ERROR WARNING INFO DEBUG NOTSET
     logger.setLevel(loggingLevel)
 
@@ -1423,11 +1423,11 @@ def run(dockable, loggingLevel=logging.ERROR):
     refreshAllScematic()
     debugGlobals()
     newPaneLayout = constructSplits(  c.paneLayout(), deepcopy(currentPaneScematic) )
-    
+
     # Re-populate
     # for i in xrange(0, len(currentAllSchematic[-1]), 2):
     #     currentPaneScematic.append(currentAllSchematic[-1][i])
-    
+
     engaged = True
     saveAllTabs()
 
