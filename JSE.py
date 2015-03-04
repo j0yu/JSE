@@ -582,55 +582,6 @@ def saveScript(paneSection, saveAs):
     logger.debug(var1(   "executer",c.cmdScrollFieldExecuter( paneSection, q=1, ex=1) ))
     logger.debug(var1(   "reporter",c.cmdScrollFieldReporter( paneSection, q=1, ex=1) ))
 
-    if c.cmdScrollFieldReporter( paneSection, q=1, ex=1):
-        logger.debug(var1("line numbering was",c.cmdScrollFieldReporter( paneSection, q=1, ln=1) ))
-        c.cmdScrollFieldReporter( paneSection, e=1, ln=0)
-        logger.debug(var1( "line numbering is",c.cmdScrollFieldReporter( paneSection, q=1, ln=1) ))
-
-    ''' --- FIRST ---
-            Find the paneLayout above the current control/layout.
-            This is done through assigning and reassigning the parent
-            and child, shuffling up the levels of parents until the
-            a paneLayout is identified
-
-            paneSection         :   child right underneath the paneLayout that the
-                                    input/output section belong to
-            parentPaneLayout    :   paneLayout that is the parent of the pane that
-                                    called the split, initially initialised to paneSection
-                                    in order to start the parent traversal algorithm
-    parentPaneLayout = paneSection
-    while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
-        paneSection = parentPaneLayout
-        parentPaneLayout = c.control(parentPaneLayout, query=True, parent=True)
-    '''
-
-    ''' --- SECOND ---
-            Figure out which indices the various children of the different pane layouts
-            are, as well as the grand parent layout. Can't forget about the grannies
-
-    parentPaneLayoutChildren        = c.paneLayout( parentPaneLayout, query=True, childArray=True)
-    grandParentPaneLayout           = c.paneLayout( parentPaneLayout, query=True, parent=True)
-    grandParentPaneLayoutChildren   = c.paneLayout( grandParentPaneLayout, query=True, childArray=True)
-
-    paneSectionShortName        = re.split("\|",paneSection)[-1] # strip the short name from the full name
-    parentPaneLayoutShortName   = re.split("\|",parentPaneLayout)[-1] # strip the short name from the full name
-
-    parentPaneLayoutSectionNumber   = grandParentPaneLayoutChildren.index(parentPaneLayoutShortName)+1
-
-    otherPaneChildNum           = ( parentPaneLayoutChildren.index(paneSectionShortName)+1 ) % 2
-    otherParentPaneSectionNum   = (parentPaneLayoutSectionNumber % 2) + 1
-    '''
-
-    ''' --- FINALLY ---
-            Re-parenting and assigning the control to the grand parent layout
-            and deleting the pane layout that it previously resided under
-    c.control( parentPaneLayoutChildren[otherPaneChildNum], edit=True, parent=grandParentPaneLayout)
-    c.paneLayout( grandParentPaneLayout, edit=True,
-                    setPane=[ parentPaneLayoutChildren[otherPaneChildNum], parentPaneLayoutSectionNumber ])
-    # c.deleteUI( parentPaneLayout ) # Segmentation fault causer in 2014 SP2 Linux
-
-    '''
-
     logger.info(defEnd("Saved script"))
     logger.info("")
 
@@ -707,12 +658,7 @@ def createInputMenu( ctrl ):
 
     c.setParent("..", menu=True)
     c.menuItem(  label="----Input Menu----", enable=False)
-    c.menuItem(  label="",
-                    command="")
-    c.menuItem(  label="",
-                    command="")
-    c.menuItem(  label="",
-                    command="")
+    c.menuItem(  label="", command="")
 
     logger.debug(defEnd("Created Input Menu"))
     logger.debug("")
@@ -802,20 +748,9 @@ def createOutputMenu( ctrl ):
                     command="JSE.outputPaneMethods('"+ctrl+"','snapshotThenWipe')" )
     c.menuItem(  optionBox=True, radialPosition="E",
                     command="JSE.outputPaneMethods('"+ctrl+"','wipe')" )
-    c.menuItem(  label="---", radialPosition="W",
-                    command="" )
-    c.menuItem(  label="---", radialPosition="S",
-                    command="" )
-    c.menuItem(  label="---", radialPosition="N",
-                    command="" )
 
-    c.menuItem(  label="---", enable=False)
-    c.menuItem(  label="---",
-                    command="")
-    c.menuItem(  label="",
-                    command="")
-    c.menuItem(  label="",
-                    command="")
+    c.menuItem(  label="---Output Menu---", enable=False)
+    c.menuItem(  label="", command="")
 
     logger.debug(defEnd("Created Output Menu"))
     logger.debug("")
@@ -827,75 +762,69 @@ def scriptEditorMethods(ctrl, method, *arg):
     logger.debug(var1("ctrl",ctrl))
     logger.debug(var1("method",method))
 
-    '''
     if method == "run":
-        logger.debug(head2("Executing script text")
+        logger.debug(head2("Executing script text"))
 
         scriptIsMEL = ( c.cmdScrollFieldExecuter(ctrl, q=1, sourceType=1) == "mel" )
-        logger.debug( var1("scriptIsMEL",scriptIsMEL)
+        logger.debug( var1("scriptIsMEL",scriptIsMEL) )
 
         if c.cmdScrollFieldExecuter(ctrl, q=1, hasSelection=1):  scriptToRun = c.cmdScrollFieldExecuter(ctrl, q=1, selectedText=1)
         else:                                                    scriptToRun = c.cmdScrollFieldExecuter(ctrl, q=1, text=1)
 
-        logger.debug( var1("scriptToRun",scriptToRun)
+        logger.debug( var1("scriptToRun",scriptToRun) )
 
-        saveAllTabs()
+        saveTabs()
 
-        if scriptIsMEL: melEval("evalDeferred %s")
-        else:           c.evalDeferred( {$commandToExecute} )
+        if scriptIsMEL: melEval(scriptToRun)
+        else:           c.evalDeferred(scriptToRun)
 
+        logger.debug(head2("Executed script text") )
 
+    elif method[:4] == "save":
+        '''
+        This procedure saves the current active tab's script to a file. If...
 
+        Current tab has file location |  and saveAs is  | then...
+        ==============================|=================|===========================
+                    Yes               |       Yes       |   Save to new file
+        ------------------------------|-----------------|---------------------------
+                    No                |       Yes       |   Save to new file
+        ------------------------------|-----------------|---------------------------
+                    Yes               |       No        |   Save to file location
+        ------------------------------|-----------------|---------------------------
+                    No                |       No        |   Save to new file
+        '''
+        logger.debug(head2("Saving script") )
+        paneSection,parentPaneLayout = navigateToParentPaneLayout(ctrl)
+        #   1/ Navigate to pane parent tab
+        #   2/ Find out which tab index
+        #   3/ Get Pane file location using tab index
+        #   4/ Find out if method[5:]=="As"
+        #   5/ Do the boolean table to find out whether save as or save
 
-        #--------------------------------------------------------------------------------------------------
-        global string $gCommandExecuter[];
-        global string $gLastFocusedCommandExecuter;
-        global string $gCommandExecuterTabs;
-        global string $executerBackupFileName;
-        global int $latestFocuedExecutorLine;
-        string $commandToExecute;
+        # Save as
+        #   1/ Navigate to pane parent tab
+        #   2/ Get tab label using child name of tab layout
+        #   3/ Get tab language
+        #   4/ File save dialog with label+language
+        #   5/ Get final file name and location
+        #   6/ Place in file location array
+        #   7/ Sync optionVars
 
-
-        $languageIsMEL             = (`cmdScrollFieldExecuter -q -sourceType   $gLastFocusedCommandExecuter`=="mel");
-        $latestFocuedExecutorLine  =  `cmdScrollFieldExecuter -q -currentLine  $gLastFocusedCommandExecuter`;
-        $selectedText              =  `cmdScrollFieldExecuter -q -selectedText $gLastFocusedCommandExecuter`;
-
-        syncExecuterBackupFiles(true);
-
-
-        print "\n// (Script Editor) Here are the results from the commands!\n";
-
-
-
-
-        cmdScrollFieldExecuter -e -currentLine $latestFocuedExecutorLine $gLastFocusedCommandExecuter;
-
-        if ($selectedText!="") {
-            $originalSearchString = `cmdScrollFieldExecuter -q -searchString    $gLastFocusedCommandExecuter`;
-            $originalSearchDown   = `cmdScrollFieldExecuter -q -searchDown      $gLastFocusedCommandExecuter`;
-            $originalMatchCase    = `cmdScrollFieldExecuter -q -searchMatchCase $gLastFocusedCommandExecuter`;
-
-            cmdScrollFieldExecuter -e -searchString $selectedText
-                                      -searchDown 0
-                                      -searchMatchCase 1
-                                      $gLastFocusedCommandExecuter;
-
-            cmdScrollFieldExecuter -q -searchAndSelect $gLastFocusedCommandExecuter;
-
-            cmdScrollFieldExecuter -e -searchString     $originalSearchString
-                                      -searchDown       $originalSearchDown
-                                      -searchMatchCase  $originalMatchCase
-                                      $gLastFocusedCommandExecuter;
-        }
-        #--------------------------------------------------------------------------------------------------
+        # Save
+        #   1/ Python open file
+        #   2/ Get tab contents
+        #   3/ Write to file
+        #   4/ Close file
 
 
-    elif method == "wipe":
-    '''
+
+
+        logger.debug(head2("Saved script") )
+
 
     logger.debug(defEnd("Script editor method processed"))
     logger.debug("")
-
 
 
 def createScriptEditorMenu( ctrl ):
@@ -905,6 +834,15 @@ def createScriptEditorMenu( ctrl ):
     c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
     c.menuItem(  label="Run code", radialPosition="N",
                     command="JSE.scriptEditorMethods('"+ctrl+"','run')" )
+
+    c.menuItem(  label="Save...", radialPosition="E", subMenu=True)
+    c.menuItem(  label="Save", radialPosition="E",
+                    command="JSE.scriptEditorMethods('"+ctrl+"','save')" )
+    c.menuItem(  label="Save As", radialPosition="S",
+                    command="JSE.scriptEditorMethods('"+ctrl+"','saveAs')" )
+    c.menuItem(  label="Save All", radialPosition="N",
+                    command="JSE.scriptEditorMethods('"+ctrl+"','saveAll')" )
+    c.setParent("..",menu=1)
 
     logger.debug(defEnd("Created Script Editor Menu"))
     logger.debug("")
@@ -962,7 +900,11 @@ def createOutput( parentPanelLayout ):
     logger.info(defStart("Creating output"))
     logger.debug(var1("parentPanelLayout",parentPanelLayout))
 
-    output = c.cmdScrollFieldReporter(parent = parentPanelLayout, backgroundColor=[0.1,0.1,0.1] )
+    output = c.cmdScrollFieldReporter(  parent = parentPanelLayout,
+                                        backgroundColor=[0.1,0.1,0.1],
+
+                                        stackTrace=True,
+                                        lineNumbers=True )
     logger.debug(var1("output",output))
 
     createPaneMenu( output )
@@ -1052,6 +994,7 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation, exprDic={}):
         tabLabel = c.expression(n=tabLabel)
 
         createExpressionMenu(exprPanelayout)
+        createInputMenu(exprPanelayout)
         createPaneMenu(exprPanelayout)
 
     else:
@@ -1059,7 +1002,12 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation, exprDic={}):
                                                 backgroundColor = bkgndColour,
                                                 parent=pTabLayout,
 
-                                                showLineNumbers=True )
+                                                showLineNumbers=True,
+                                                spacesPerTab=4,
+                                                autoCloseBraces=True,
+                                                showTooltipHelp=True,
+                                                objectPathCompletion=True,
+                                                commandCompletion=True )
         logger.debug(var1("inputField",inputField))
 
         with open(fileLocation,"r") as bufferFile:
@@ -1068,6 +1016,7 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation, exprDic={}):
         # make sure the text is not selected
         c.cmdScrollFieldExecuter(inputField, e=1, select=[0,0] )
 
+        createScriptEditorMenu(inputField)
         createInputMenu(inputField)
         createPaneMenu(inputField)
 
@@ -1246,7 +1195,7 @@ def createInput( parentUI, activeTabIndex=1 ):
     return inputLayout
 
 
-def saveAllTabs():
+def saveTabs(justBackup=False,tabIndex=0):
     global currentInputTabType
     global currentInputTabLabels
     global currentInputTabFiles
@@ -1256,6 +1205,8 @@ def saveAllTabs():
     logger.info(defStart("Saving All"))
 
     logger.debug(var1("InputBuffersPath",InputBuffersPath))
+    logger.debug(var1("justBackup",justBackup))
+    logger.debug(var1("tabIndex",tabIndex))
     debugGlobals()
 
     """
@@ -1303,7 +1254,7 @@ def saveAllTabs():
             """
             Do the same for actual file paths that the script may be opened from
             """
-            if currentInputTabFiles[i]:
+            if currentInputTabFiles[i] and not justBackup:
                 c.sysFile( currentInputTabFiles[i], delete=1)
                 c.cmdScrollFieldExecuter(currentInputTabs[i], e=1,
                                          storeContents = currentInputTabFiles[i] )
@@ -1518,7 +1469,7 @@ def run(dockable, loggingLevel=logging.ERROR):
     #     currentPaneScematic.append(currentAllSchematic[-1][i])
 
     engaged = True
-    saveAllTabs()
+    saveTabs()
 
     if dockable:
         c.dockControl("JSE",area='left',floating=True,content=window)
