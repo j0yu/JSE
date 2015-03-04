@@ -797,7 +797,7 @@ def createOutputMenu( ctrl ):
     logger.debug(defStart("Creating Output Menu"))
     logger.debug(var1("ctrl",ctrl))
 
-    c.popupMenu( parent=ctrl , shiftModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
+    c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
     c.menuItem(  label="Snapshot then Wipe", radialPosition="E",
                     command="JSE.outputPaneMethods('"+ctrl+"','snapshotThenWipe')" )
     c.menuItem(  optionBox=True, radialPosition="E",
@@ -818,6 +818,94 @@ def createOutputMenu( ctrl ):
                     command="")
 
     logger.debug(defEnd("Created Output Menu"))
+    logger.debug("")
+
+
+def scriptEditorMethods(ctrl, method, *arg):
+    global OutputSnapshotsPath
+    logger.debug(defStart("Script editor method processing"))
+    logger.debug(var1("ctrl",ctrl))
+    logger.debug(var1("method",method))
+
+    if method == "run":
+        logger.debug(head2("Executing script text")
+
+        scriptIsMEL = ( c.cmdScrollFieldExecuter(ctrl, q=1, sourceType=1) == "mel" )
+        logger.debug( var1("scriptIsMEL",scriptIsMEL)
+
+        if c.cmdScrollFieldExecuter(ctrl, q=1, hasSelection=1):  scriptToRun = c.cmdScrollFieldExecuter(ctrl, q=1, selectedText=1)
+        else:                                                    scriptToRun = c.cmdScrollFieldExecuter(ctrl, q=1, text=1)
+
+        logger.debug( var1("scriptToRun",scriptToRun)
+
+        saveAllTabs()
+
+        if scriptIsMEL: melEval("evalDeferred %s")
+        else:           c.evalDeferred( {$commandToExecute} )
+
+
+
+
+
+        #--------------------------------------------------------------------------------------------------
+        global string $gCommandExecuter[];
+        global string $gLastFocusedCommandExecuter;
+        global string $gCommandExecuterTabs;
+        global string $executerBackupFileName;
+        global int $latestFocuedExecutorLine;
+        string $commandToExecute;
+
+
+        $languageIsMEL             = (`cmdScrollFieldExecuter -q -sourceType   $gLastFocusedCommandExecuter`=="mel");
+        $latestFocuedExecutorLine  =  `cmdScrollFieldExecuter -q -currentLine  $gLastFocusedCommandExecuter`;
+        $selectedText              =  `cmdScrollFieldExecuter -q -selectedText $gLastFocusedCommandExecuter`;
+
+        syncExecuterBackupFiles(true);
+
+
+        print "\n// (Script Editor) Here are the results from the commands!\n";
+
+
+
+
+        cmdScrollFieldExecuter -e -currentLine $latestFocuedExecutorLine $gLastFocusedCommandExecuter;
+
+        if ($selectedText!="") {
+            $originalSearchString = `cmdScrollFieldExecuter -q -searchString    $gLastFocusedCommandExecuter`;
+            $originalSearchDown   = `cmdScrollFieldExecuter -q -searchDown      $gLastFocusedCommandExecuter`;
+            $originalMatchCase    = `cmdScrollFieldExecuter -q -searchMatchCase $gLastFocusedCommandExecuter`;
+
+            cmdScrollFieldExecuter -e -searchString $selectedText
+                                      -searchDown 0
+                                      -searchMatchCase 1
+                                      $gLastFocusedCommandExecuter;
+
+            cmdScrollFieldExecuter -q -searchAndSelect $gLastFocusedCommandExecuter;
+
+            cmdScrollFieldExecuter -e -searchString     $originalSearchString
+                                      -searchDown       $originalSearchDown
+                                      -searchMatchCase  $originalMatchCase
+                                      $gLastFocusedCommandExecuter;
+        }
+        #--------------------------------------------------------------------------------------------------
+
+
+    elif method == "wipe":
+
+    logger.debug(defEnd("Script editor method processed"))
+    logger.debug("")
+
+
+
+def createScriptEditorMenu( ctrl ):
+    logger.debug(defStart("Creating Script Editor Menu"))
+    logger.debug(var1("ctrl",ctrl))
+
+    c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
+    c.menuItem(  label="Run code", radialPosition="N",
+                    command="JSE.scriptEditorMethods('"+ctrl+"','run')" )
+
+    logger.debug(defEnd("Created Script Editor Menu"))
     logger.debug("")
 
 
@@ -1100,7 +1188,7 @@ def createInput( parentUI, activeTabIndex=1 ):
             if currentInputTabType[i] == "python": fileExt = "py"
             else: fileExt = "mel"
 
-            if re.match("^commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]):
+            if re.match(".*/commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]):
                 fileLocation = currentInputTabFiles[i]
             else:
                 fileLocation = InputBuffersPath+"JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt
@@ -1199,7 +1287,7 @@ def saveAllTabs():
         If it is the default maya script editor, don't bother "Save to File" as this
         situation only happens when we are hijacking Maya's settings and contents
         """
-        if re.match("^commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]): currentInputTabFiles[i]=""
+        if re.match(".*/commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]): currentInputTabFiles[i]=""
 
         if currentInputTabType[i] != "expr":
             fileExt=""
