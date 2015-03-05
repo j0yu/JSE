@@ -111,7 +111,7 @@ def constructJSE( paneSection, buildSchematic ):
     global currentAllSchematic
 
     def constructSplits(paneCfgTxt, paneEditSize, buildSchematic=buildSchematic):
-        newPaneLayout = c.paneLayout(configuration=paneCfgTxt,parent=paneSection, 
+        newPaneLayout = c.paneLayout(configuration=paneCfgTxt,parent=paneSection,
                                      separatorMovedCommand="JSE.refreshAllScematic()")
         currentAllSchematic[-1].append(newPaneLayout)
         logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
@@ -184,24 +184,24 @@ def constructJSE( paneSection, buildSchematic ):
     paneCfg = buildSchematic.pop(0)
     logger.debug(var1("buildSchematic (popped)",buildSchematic) )
     logger.debug(var1("paneCfg",paneCfg) )
-    
+
     currentAllSchematic[-1].append(paneCfg)
     logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
 
 
-    if   paneCfg.startswith("V") : 
+    if   paneCfg.startswith("V") :
         newPaneLayout,buildSchematic = constructSplits( "vertical2",   [1, int(paneCfg[1:]), 100] )
         logger.info(defEnd("Constructed"))
         logger.info("")
         return newPaneLayout, buildSchematic
 
-    elif paneCfg.startswith("H") : 
+    elif paneCfg.startswith("H") :
         newPaneLayout,buildSchematic = constructSplits( "horizontal2", [1, 100, int(paneCfg[1:])] )
         logger.info(defEnd("Constructed"))
         logger.info("")
         return newPaneLayout, buildSchematic
 
-    elif paneCfg.startswith("O") : 
+    elif paneCfg.startswith("O") :
         newPane = createOutput(paneSection)
         currentAllSchematic[-1].append(newPane)
         c.paneLayout(paneSection, edit=True, setPane=[ ( newPane, 1)] )
@@ -209,7 +209,7 @@ def constructJSE( paneSection, buildSchematic ):
         logger.info("")
         return paneSection, buildSchematic
 
-    elif paneCfg.startswith("I") : 
+    elif paneCfg.startswith("I") :
         newPane = createInput(createInput)
         currentAllSchematic[-1].append(newPane)
         c.paneLayout(paneSection, edit=True, setPane=[ ( newPane , 1)] )
@@ -338,7 +338,7 @@ def split( paneSection, re_assign_position, newPaneIsInput):
     logger.debug(var1("oldSectionPaneIndex",oldSectionPaneIndex ))
 
     logger.debug(head2("Setting values for new paneLayouts" ) )
-    newPaneLayout =  c.paneLayout(configuration=paneConfig, parent=parentPaneLayout, 
+    newPaneLayout =  c.paneLayout(configuration=paneConfig, parent=parentPaneLayout,
                                   separatorMovedCommand="JSE.refreshAllScematic()")
 
 
@@ -435,7 +435,7 @@ def deletePane(paneSection):
     grandParentPaneLayout           = c.paneLayout( parentPaneLayout, query=True, parent=True)
     logger.debug(var1(        "grandParentPaneLayout",grandParentPaneLayout))
     logger.debug(var1(        "objectTypeUI",c.objectTypeUI(grandParentPaneLayout)))
-    
+
     if "indow" in c.objectTypeUI(grandParentPaneLayout):
         c.deleteUI(grandParentPaneLayout)
         logger.info(head2("Grand Parent is a window, closing window") )
@@ -466,7 +466,7 @@ def deletePane(paneSection):
     pane_IndicesInSchematic = ""
     surv__IndicesInSchematic = ""
     for i in xrange(len(currentAllSchematic)):
-        logger.debug(var1("Looking for", parentPaneLayout+"|"+parentPaneLayoutChildren[otherPaneChildNum]  ))   
+        logger.debug(var1("Looking for", parentPaneLayout+"|"+parentPaneLayoutChildren[otherPaneChildNum]  ))
         for j in xrange(0, len(currentAllSchematic[i]), 2):
             logger.debug(var1("currentAllSchematic[i][j+1]", currentAllSchematic[i][j+1]  ))
             logger.debug(var1("Match?", (currentAllSchematic[i][j+1] == parentPaneLayout+"|"+parentPaneLayoutChildren[otherPaneChildNum])  ))
@@ -513,7 +513,7 @@ def deletePane(paneSection):
 
 
 def setPane( paneType ):
-    
+
     logger.debug(defStart("Setting Pane"))
     logger.debug(var1("paneType",paneType))
 
@@ -654,7 +654,7 @@ def createInput( parentUI, activeTabIndex=1 ):
                 logger.debug(var1("new currentInputTabFiles[i]",currentInputTabFiles[i]))
             else:
                 fileLocation = InputBuffersPath+"JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt
-            
+
             currentInputTabs.append(
                 makeInputTab(   currentInputTabType[i],
                                 inputTabsLay,
@@ -734,7 +734,7 @@ def refreshAllScematic():
                     logger.debug(var1("treeNodeType",treeNodeType))
 
                     ctrlOrLayOnly = re.split("\|",windowSchematic[j+1])[-1]
-                    
+
                     try:    ctrlOrLayNew = c.control(ctrlOrLayOnly, q=1, fullPathName=1)
                     except: ctrlOrLayNew = c.layout( ctrlOrLayOnly, q=1, fullPathName=1)
                     logger.debug(var1("ctrlOrLayNew",ctrlOrLayNew))
@@ -1131,6 +1131,8 @@ def createOutputMenu( ctrl ):
 
 def scriptEditorMethods(ctrl, method, *arg):
     global OutputSnapshotsPath
+    global currentInputTabLabels
+    global currentInputTabType
     logger.debug(defStart("Script editor method processing"))
     logger.debug(var1("ctrl",ctrl))
     logger.debug(var1("method",method))
@@ -1157,7 +1159,7 @@ def scriptEditorMethods(ctrl, method, *arg):
         logger.debug(head2("Saving script") )
         global currentInputTabFiles
         logger.debug( var1("currentInputTabFiles",currentInputTabFiles))
-        
+
         '''
         This procedure saves the current active tab's script to a file. If...
 
@@ -1183,9 +1185,9 @@ def scriptEditorMethods(ctrl, method, *arg):
         logger.debug( var2("childArray", parentTabLayChildArray ))
         logger.debug( var2("(len)",len(parentTabLayChildArray) ))
 
-        parentTabLayLabelArray = c.tabLayout(parentTabLay,q=1, tabLabel=1)
-        logger.debug( var2("tabLabel", parentTabLayLabelArray ))
-        logger.debug( var2("(len)",len(parentTabLayLabelArray) ))
+        currentInputTabLabels = c.tabLayout(parentTabLay,q=1, tabLabel=1)
+        logger.debug( var2("tabLabel", currentInputTabLabels ))
+        logger.debug( var2("(len)",len(currentInputTabLabels) ))
 
         #   2/ Find out which tab index
         selectedTabIndex = c.tabLayout(parentTabLay,q=1, selectTabIndex=1)-1
@@ -1197,9 +1199,11 @@ def scriptEditorMethods(ctrl, method, *arg):
 
         #   4/ Find out if method[5:]=="As"
         logger.debug( var1("ends in As",method.endswith("As") ))
-        
+
         #   5/ Do the boolean table to find out whether save as or save
         saveInputTabs()
+
+        logger.debug( head2("Saving....") )
         if "All" in method:
             logger.debug( head2("Save all"))
             for i in xrange( len(parentTabLayChildArray) ):
@@ -1207,22 +1211,21 @@ def scriptEditorMethods(ctrl, method, *arg):
         else:
             if method.endswith("As"):
                 #   1/ Navigate to pane parent tab (done)
-                #   2/ Get tab label 
-                fileName_tabLabel = parentTabLayLabelArray[selectedTabIndex-1]
-                
+                #   2/ Get tab label
+                fileName_tabLabel = currentInputTabLabels[selectedTabIndex-1]
+
                 #   3/ Get tab language
                 tabCmdField = parentTabLayChildArray[selectedTabIndex-1]
                 rawTabLang = c.cmdScrollFieldExecuter( tabCmdField, q=1, sourceType=1)
 
-                if rawTabLang == "python": 
+                if rawTabLang == "python":
                     fileExt = ".py"
                     selectedFileFilter = "Python"
-                else: 
+                else:
                     fileExt = ".mel"
                     selectedFileFilter = "MEL"
 
                 #   4/ File save dialog with label+language
-                logger.debug( head2("Saving....") )
                 allCode = c.cmdScrollFieldExecuter( tabCmdField, q=1, text=1)
 
                 multipleFilters = "Python (*.y);;MEL (*.mle);;All Files (*.*)"
@@ -1230,11 +1233,11 @@ def scriptEditorMethods(ctrl, method, *arg):
                 currentInputTabFiles[selectedTabIndex] = returnedFile
 
                 syncAll()
-                logger.debug( head2("Saved") )
 
-                
+
             else:
                 saveInputTabs(selectedTabIndex)
+        logger.debug( head2("Saved") )
 
 
         # Save
@@ -1335,11 +1338,37 @@ def saveInputTabs(tabIndex=0):
             """
             Do the same for actual file paths that the script may be opened from
             """
-            if (currentInputTabFiles[i] and not justBackup) or :
+            if not tabIndex and currentInputTabFiles[i] :
                 c.sysFile( currentInputTabFiles[i], delete=1)
                 c.cmdScrollFieldExecuter(currentInputTabs[i], e=1,
                                          storeContents = currentInputTabFiles[i] )
                 print "Saved",currentInputTabFiles[i]
+
+            if tabIndex:
+                #   1/ Navigate to pane parent tab (done)
+                #   2/ Get tab label
+                fileName_tabLabel = parentTabLayLabelArray[selectedTabIndex-1]
+
+                #   3/ Get tab language
+                tabCmdField = parentTabLayChildArray[selectedTabIndex-1]
+                rawTabLang = c.cmdScrollFieldExecuter( tabCmdField, q=1, sourceType=1)
+
+                if rawTabLang == "python":
+                    fileExt = ".py"
+                    selectedFileFilter = "Python"
+                else:
+                    fileExt = ".mel"
+                    selectedFileFilter = "MEL"
+
+                #   4/ File save dialog with label+language
+                allCode = c.cmdScrollFieldExecuter( tabCmdField, q=1, text=1)
+
+                multipleFilters = "Python (*.y);;MEL (*.mle);;All Files (*.*)"
+                returnedFile = c.fileDialog2(fileFilter=multipleFilters, dialogStyle=2)[0]
+                currentInputTabFiles[selectedTabIndex] = returnedFile
+
+                syncAll()
+
 
         # make sure the text is not selected
         c.cmdScrollFieldExecuter(currentInputTabs[i], e=1, select=[0,0] )
@@ -1367,12 +1396,7 @@ def syncAll():
     global window
     global layout
 
-
-    c.optionVar(stringValueAppend=["JSE_input_tabLangs" ,i])
-    c.optionVar(stringValueAppend=["JSE_input_tabLabels",i])
-    c.optionVar(stringValueAppend=["JSE_input_tabFiles" ,i])
-
-    for i in currentInputTabType : c.optionVar(stringValueAppend=["JSE_input_tabLangs" ,i])
+    for i in currentInputTabType :  c.optionVar(stringValueAppend=["JSE_input_tabLangs" ,i])
     for i in currentInputTabLabels: c.optionVar(stringValueAppend=["JSE_input_tabLabels",i])
     for i in currentInputTabFiles : c.optionVar(stringValueAppend=["JSE_input_tabFiles" ,i])
 
