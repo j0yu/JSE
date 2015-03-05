@@ -30,8 +30,6 @@ currentAllSchematic = []    # e.g. [ ["V50", "window4|paneLayout19|paneLayout20"
                             #         "I3" , "window5|paneLayout21|paneLayout22|formLayout343"]
                             #      ]
 
-window = ""                 # The JSE window control
-layout = ""                 # Main layout under the JSE window
 engaged = False             # If True, JSE had ran in this instance of Maya
 InputBuffersPath = ""
 OutputSnapshotsPath = ""
@@ -50,12 +48,14 @@ showTooltipHelp
 
 '''
 # Procedure to save up retyping the same debug text formatting
-def defStart(text): return "{:=<80}".format(str(text)+" ")
-def defEnd(text): return "{:=>80}".format(" "+str(text))
+def defStart(text): return "{:\\<80}".format(str(text)+" ")
+def defEnd(text): return "{:/>80}".format(" "+str(text))
 def head1(text): return "{:=^80}".format(" "+str(text)+" ")
 def head2(text): return "{:-^80}".format(" "+str(text)+" ")
 def var1(inText,inVar): return "{:>30} -- {!s}".format(str(inText) , str(inVar) )
 
+
+####### Pane Related #######
 
 def navigateToParentPaneLayout(paneSection):
     """
@@ -364,88 +364,6 @@ def split( paneSection, re_assign_position, newPaneIsInput):
     logger.info("")
 
 
-def refreshAllScematic():
-    global currentAllSchematic
-    global currentPaneScematic
-    schematicForDeletion = []
-    logger.debug(defStart("Refreshing all schematics"))
-    logger.debug(var1("currentAllSchematic",currentAllSchematic))
-
-    if len(currentAllSchematic[-1]):
-        for i in xrange(len(currentAllSchematic)):
-            logger.debug( head2("Schematic "+str(i)) )
-            windowSchematic = currentAllSchematic[i]
-            logger.debug(var1("windowSchematic",windowSchematic))
-
-            fullPathSplit = re.split("\|", windowSchematic[1])
-            logger.debug(var1("fullPathSplit",fullPathSplit))
-
-            if not c.window( fullPathSplit[0], q=1, exists=1):
-                logger.debug( head1("Schematic window doesn't exist"))
-                schematicForDeletion.append( i )
-                logger.debug(var1("schematicForDeletion",schematicForDeletion))
-            else:
-                for j in xrange(0 , len(windowSchematic), 2):
-                    treeNodeType  = windowSchematic[j][0]
-                    logger.debug(var1("treeNodeType",treeNodeType))
-
-                    ctrlOrLayOnly = re.split("\|",windowSchematic[j+1])[-1]
-                    
-                    try:    ctrlOrLayNew = c.control(ctrlOrLayOnly, q=1, fullPathName=1)
-                    except: ctrlOrLayNew = c.layout( ctrlOrLayOnly, q=1, fullPathName=1)
-                    logger.debug(var1("ctrlOrLayNew",ctrlOrLayNew))
-
-                    windowSchematic[j+1] = ctrlOrLayNew
-                    if treeNodeType == "V":
-                        windowSchematic[j] = treeNodeType+str(c.paneLayout( ctrlOrLayNew , q=1, paneSize=1)[0])
-
-                    elif treeNodeType == "H":
-                        windowSchematic[j] = treeNodeType+str(c.paneLayout( ctrlOrLayNew , q=1, paneSize=1)[1])
-
-                    elif treeNodeType == "I":
-                        childTabLay = c.layout(ctrlOrLayNew,q=1,childArray=1)[0]
-                        windowSchematic[j] = treeNodeType+str(c.tabLayout( childTabLay , q=1, selectTabIndex=1) )
-
-
-
-
-
-        logger.debug( head2("Deleting schematics marked for deletion") )
-        logger.debug(var1("schematicForDeletion",schematicForDeletion))
-        # Remove lists from the back to front to avoid out of range issues
-        for i in reversed(schematicForDeletion):
-            currentAllSchematic.pop(i)
-            logger.debug(var1("schematicForDeletion",schematicForDeletion))
-            logger.debug(var1("currentAllSchematic",currentAllSchematic))
-
-        logger.debug(var1("final currentAllSchematic",currentAllSchematic))
-        currentPaneScematic = []
-        for i in xrange(0,len(currentAllSchematic[-1]),2):
-            currentPaneScematic.append( currentAllSchematic[-1][i] )
-
-        logger.debug(var1("new currentPaneScematic",currentPaneScematic))
-    logger.debug(defStart("Refreshed all schematics"))
-
-
-def attrInsert(cmdField, objSearchField, attrField):
-    logger.debug(defStart("Inserting attribute to expression field"))
-    logger.debug(var1(      "cmdField",cmdField))
-    logger.debug(var1("objSearchField",objSearchField))
-    logger.debug(var1(     "attrField",attrField))
-
-    logger.debug(head2("Get selected attributes and combine with object string"))
-    attrText = re.split(" ",c.textScrollList(attrField, q=1, selectItem=1)[0])[0]
-    objText  = c.textFieldGrp(objSearchField, q=1, text=1)
-    logger.debug( var1("attrText",attrText))
-    logger.debug( var1( "objText",objText))
-
-    logger.debug(head2("Insert it into the expression field (at current cursor pos)"))
-    c.cmdScrollFieldExecuter(cmdField, e=1, insertText="{0}.{1}".format(objText, attrText))
-
-    logger.debug(defEnd("Inserted attribute to expression field"))
-    logger.debug("")
-
-
 def deletePane(paneSection):
     global currentAllSchematic
     '''
@@ -570,388 +488,12 @@ def deletePane(paneSection):
     logger.info("")
 
 
-def listObjAttr(objTextField, scrollListToOutput):
-    # If the current object is not valid then get outta here
-    logger.debug(defStart("Listing object attributes") )
-    logger.debug(var1(      "objTextField",objTextField))
-    logger.debug(var1("scrollListToOutput",scrollListToOutput))
-
-    c.textScrollList( scrollListToOutput, e=1, removeAll=1)
-    objInQuestion = c.textFieldGrp( objTextField, q=1, text=1)
-    logger.debug(var1(     "objInQuestion",objInQuestion))
-
-    try:    attrLong = c.listAttr(objInQuestion)
-    except:
-        c.textScrollList( scrollListToOutput, e=1, append=["--NOTHING FOUND--"], enable=False)
-        return
-    attrShrt = c.listAttr(objInQuestion, shortNames=1)
-
-    logger.debug(var1(          "attrLong",attrLong))
-    logger.debug(var1(          "attrShrt",attrShrt))
-
-    attrTxt = []
-    for i,j in zip(attrLong,attrShrt):
-        attrTxt.append( "{0} ({1})".format(i,j) )
-
-    sorted(attrTxt)
-    c.textScrollList( scrollListToOutput, e=1, append=attrTxt, enable=True)
-    logger.debug(defEnd("Listed object attributes") )
-
-
-def saveScript(paneSection, saveAs):
-    '''
-    This procedure saves the current active tab's script to a file. If...
-
-    Current tab has file location |  and saveAs is  | then...
-    ==============================|=================|===========================
-                Yes               |       Yes       |   Save to new file
-    ------------------------------|-----------------|---------------------------
-                No                |       Yes       |   Save to new file
-    ------------------------------|-----------------|---------------------------
-                Yes               |       No        |   Save to file location
-    ------------------------------|-----------------|---------------------------
-                No                |       No        |   Save to new file
-
-
-
-    1 --- Find Parent Layout
-    2 --- Find other secion's name and number, this will be kept
-    3 --- Find grand parent layout
-    4 --- Find section number of parent layout under grand parent layout
-    5 --- Re-parent other section --> grand parent layout, same section number as parent layout
-    6 --- Delete parent layout, which also deletes the current section (parent layout's child)
-    '''
-    logger.info(defStart("Saving script"))
-    logger.debug(var1("paneSection",paneSection))
-    logger.debug(var1(     "saveAs",saveAs))
-    logger.debug(var1(   "executer",c.cmdScrollFieldExecuter( paneSection, q=1, ex=1) ))
-    logger.debug(var1(   "reporter",c.cmdScrollFieldReporter( paneSection, q=1, ex=1) ))
-
-    logger.info(defEnd("Saved script"))
-    logger.info("")
-
-
-def createPaneMenu( ctrl ):
-    logger.debug(defStart("Creating Pane Menu"))
-    logger.debug(var1("ctrl",ctrl))
-
-    c.popupMenu( parent=ctrl , altModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
-    c.menuItem(  label="New Right", radialPosition="E",
-                    command="JSE.split('"+ctrl+"','right',True)" )
-    c.menuItem(  label="New Right", radialPosition="E", optionBox=True,
-                    command="JSE.split('"+ctrl+"','right',False)" )
-
-    c.menuItem(  label="New Left", radialPosition="W",
-                    command="JSE.split('"+ctrl+"','left',True)" )
-    c.menuItem(  label="New Left", radialPosition="W", optionBox=True,
-                    command="JSE.split('"+ctrl+"','left', False)" )
-
-    c.menuItem(  label="New Below", radialPosition="S",
-                    command="JSE.split('"+ctrl+"','bottom',True)" )
-    c.menuItem(  label="New Below", radialPosition="S", optionBox=True,
-                    command="JSE.split('"+ctrl+"','bottom', False)" )
-
-    c.menuItem(  label="New Above", radialPosition="N",
-                    command="JSE.split('"+ctrl+"','top',True)" )
-    c.menuItem(  label="New Above", radialPosition="N", optionBox=True,
-                    command="JSE.split('"+ctrl+"','top', False)" )
-
-
-    c.menuItem(  label="---Pane Section Menu---", enable=False)
-    c.menuItem(  label="Remove This Pane!",
-                    command="JSE.deletePane('"+ctrl+"')")
-    c.menuItem(  label="Save script as...",
-                    command="JSE.saveScript('"+ctrl+"',True)")
-    c.menuItem(  label="Save script...",
-                    command="JSE.saveScript('"+ctrl+"',False)")
-
-    logger.debug(defEnd("Created Pane Menu"))
-    logger.debug("")
-
-
-def inputPaneMethods(ctrl, method):
-    global OutputSnapshotsPath
-    logger.debug(defStart("Input method processing"))
-    logger.debug(var1("ctrl",ctrl))
-    logger.debug(var1("method",method))
-
-    if method[:12] == "createScript":
-        print "---Navigate tree and create tab on all layouts---"
-        # c.cmdScrollFieldExecuter(sourceType=method[12:])
-
-    elif method == "createExpression":
-        print "---Need to create expression---"
-
-
-    logger.debug(defEnd("Input method processed"))
-    logger.debug("")
-
-
-def createInputMenu( ctrl ):
-    logger.debug(defStart("Creating Input Menu"))
-    logger.debug(var1("ctrl",ctrl))
-
-    c.popupMenu( parent=ctrl , shiftModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
-
-    c.menuItem(  label="Create Tab...", radialPosition="N", subMenu=True)
-    c.menuItem(  label="Create Python", radialPosition="E",
-                    command="JSE.inputPaneMethods('"+ctrl+"','createScriptpython')" )
-    c.menuItem(  label="Create MEL", radialPosition="W",
-                    command="JSE.inputPaneMethods('"+ctrl+"','createScriptmel')" )
-    c.menuItem(  label="Create Expression", radialPosition="N",
-                    command="JSE.inputPaneMethods('"+ctrl+"','createExpression')" )
-
-    c.setParent("..", menu=True)
-    c.menuItem(  label="----Input Menu----", enable=False)
-    c.menuItem(  label="", command="")
-
-    logger.debug(defEnd("Created Input Menu"))
-    logger.debug("")
-
-
-def createExpressionMenu( ctrl ):
-    logger.debug(defStart("Creating Expression Menu"))
-    logger.debug(var1("ctrl",ctrl))
-
-    c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
-    c.menuItem(  label="New Expression", radialPosition="E",
-                    command="JSE.logger.debug('New Expression')" )
-    c.menuItem(  label="Save to file", radialPosition="W",
-                    command="JSE.logger.debug('Save expression to file')" )
-    c.menuItem(  label="Close Expression", radialPosition="S",
-                    command="JSE.logger.debug('Unregister Expression')" )
-    c.menuItem(  label="Update Expression", radialPosition="N",
-                    command="JSE.updateExpr('"+ctrl+"')" )
-
-    c.menuItem(  label="----Expression Menu----", enable=False)
-
-    logger.debug(defEnd("Created Expression Menu"))
-    logger.debug("")
-
-
-def createDebugMenu( ctrl ):
-    logger.debug(defStart("Creating Debug Menu"))
-    logger.debug(var1("ctrl",ctrl))
-
-    c.popupMenu( parent=ctrl , markingMenu=True,
-                 shiftModifier=True, ctrlModifier=True, altModifier=True ) # markingMenu = Enable pie style menu
-    c.menuItem(  label="wipeOptionVars", radialPosition="E",
-                    command="JSE.wipeOptionVars()" )
-    c.menuItem(  label="refreshAllScematic", radialPosition="W",
-                    command="JSE.refreshAllScematic()" )
-    c.menuItem(  label="debugGlobals", radialPosition="S",
-                    command="JSE.debugGlobals()" )
-    c.menuItem(  label="Reload", radialPosition="N",
-                    command="reload(JSE)" )
-
-    c.menuItem(  label="Run in... [SetLevel]", enable=False)
-    c.menuItem(  label="Debug",  command="JSE.run(0,JSE.logging.DEBUG)")
-    c.menuItem(  optionBox=True, command="JSE.logger.setLevel(JSE.logging.DEBUG)")
-    c.menuItem(  label="Info",   command="JSE.run(0,JSE.logging.INFO)")
-    c.menuItem(  optionBox=True, command="JSE.logger.setLevel(JSE.logging.INFO)")
-    c.menuItem(  label="Error",  command="JSE.run(0,JSE.logging.ERROR)")
-    c.menuItem(  optionBox=True, command="JSE.logger.setLevel(JSE.logging.ERROR)")
-
-
-    logger.debug(defEnd("Created Debug Menu"))
-    logger.debug("")
-
-
-def outputPaneMethods(ctrl, method, *arg):
-    global OutputSnapshotsPath
-    logger.debug(defStart("Output method processing"))
-    logger.debug(var1("ctrl",ctrl))
-    logger.debug(var1("method",method))
-
-    if method == "snapshotThenWipe":
-        newSnapshotFileName = OutputSnapshotsPath+c.date(format="YYYY-MMm-DDd-hhhmmmss.txt")
-        logger.debug( var1("snapshot to file", newSnapshotFileName ))
-
-        with open(newSnapshotFileName,"w") as snapshotFile:
-            snapshotFile.write(c.cmdScrollFieldReporter(ctrl, q=1, text=1))
-        c.cmdScrollFieldReporter(ctrl, e=1, clear=1)
-
-        snapshotList = c.getFileList(folder=OutputSnapshotsPath, filespec='*' )
-        logger.debug( var1("new snapshotList", snapshotList ))
-        for i in snapshotList[20:]:
-            logger.debug( var1("deleting", i ))
-            c.sysFile(OutputSnapshotsPath+i,delete=1)
-
-    elif method == "wipe":
-        c.cmdScrollFieldReporter(ctrl, e=1, clear=1)
-
-    logger.debug(defEnd("Output method processed"))
-    logger.debug("")
-
-
-def createOutputMenu( ctrl ):
-    logger.debug(defStart("Creating Output Menu"))
-    logger.debug(var1("ctrl",ctrl))
-
-    c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
-    c.menuItem(  label="Snapshot then Wipe", radialPosition="E",
-                    command="JSE.outputPaneMethods('"+ctrl+"','snapshotThenWipe')" )
-    c.menuItem(  optionBox=True, radialPosition="E",
-                    command="JSE.outputPaneMethods('"+ctrl+"','wipe')" )
-
-    c.menuItem(  label="---Output Menu---", enable=False)
-    c.menuItem(  label="", command="")
-
-    logger.debug(defEnd("Created Output Menu"))
-    logger.debug("")
-
-
-def scriptEditorMethods(ctrl, method, *arg):
-    global OutputSnapshotsPath
-    logger.debug(defStart("Script editor method processing"))
-    logger.debug(var1("ctrl",ctrl))
-    logger.debug(var1("method",method))
-
-    if method == "run":
-        logger.debug(head2("Executing script text"))
-
-        scriptIsMEL = ( c.cmdScrollFieldExecuter(ctrl, q=1, sourceType=1) == "mel" )
-        logger.debug( var1("scriptIsMEL",scriptIsMEL) )
-
-        if c.cmdScrollFieldExecuter(ctrl, q=1, hasSelection=1):  scriptToRun = c.cmdScrollFieldExecuter(ctrl, q=1, selectedText=1)
-        else:                                                    scriptToRun = c.cmdScrollFieldExecuter(ctrl, q=1, text=1)
-
-        logger.debug( var1("scriptToRun",scriptToRun) )
-
-        saveTabs()
-
-        if scriptIsMEL: melEval(scriptToRun)
-        else:           c.evalDeferred(scriptToRun)
-
-        logger.debug(head2("Executed script text") )
-
-    elif method[:4] == "save":
-        logger.debug(head2("Saving script") )
-        global currentInputTabFiles
-        logger.debug( var1("currentInputTabFiles",currentInputTabFiles))
-        
-        '''
-        This procedure saves the current active tab's script to a file. If...
-
-        Current tab has file location |  and saveAs is  | then...
-        ==============================|=================|===========================
-                    Yes               |       Yes       |   Save to new file
-        ------------------------------|-----------------|---------------------------
-                    No                |       Yes       |   Save to new file
-        ------------------------------|-----------------|---------------------------
-                    Yes               |       No        |   Save to file location
-        ------------------------------|-----------------|---------------------------
-                    No                |       No        |   Save to new file
-        '''
-        paneSection,parentPaneLayout = navigateToParentPaneLayout(ctrl)
-        logger.debug( var1("paneSection",paneSection))
-        logger.debug( var1("(children)",c.layout(paneSection, q=1, childArray=1) ))
-
-        #   1/ Navigate to pane parent tab
-        parentTabLayout = paneSection+"|"+c.layout(paneSection, q=1, childArray=1)[0]
-        logger.debug( var1("parentTabLayout",parentTabLayout))
-        logger.debug( var1("selectTabIndex",c.tabLayout(parentTabLayout,q=1, selectTabIndex=1) ))
-
-        #   2/ Find out which tab index
-        #   3/ Get Pane file location using tab index
-        tabFileLocation = currentInputTabFiles[ c.tabLayout(parentTabLayout,q=1, selectTabIndex=1)-1 ]
-        logger.debug( var1("tabFileLocation",tabFileLocation))
-
-        #   4/ Find out if method[5:]=="As"
-        logger.debug( var1("method[-2:]",method[-2:]))
-        #   5/ Do the boolean table to find out whether save as or save
-
-        # Save as
-        #   1/ Navigate to pane parent tab
-        #   2/ Get tab label using child name of tab layout
-        #   3/ Get tab language
-        #   4/ File save dialog with label+language
-        #   5/ Get final file name and location
-        #   6/ Place in file location array
-        #   7/ Sync optionVars
-
-        # Save
-        #   1/ Python open file
-        #   2/ Get tab contents
-        #   3/ Write to file
-        #   4/ Close file
-
-
-
-
-        logger.debug(head2("Saved script") )
-
-
-    logger.debug(defEnd("Script editor method processed"))
-    logger.debug("")
-
-
-def createScriptEditorMenu( ctrl ):
-    logger.debug(defStart("Creating Script Editor Menu"))
-    logger.debug(var1("ctrl",ctrl))
-
-    c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
-    c.menuItem(  label="Run code", radialPosition="N",
-                    command="JSE.scriptEditorMethods('"+ctrl+"','run')" )
-
-    c.menuItem(  label="Save...", radialPosition="E", subMenu=True)
-    c.menuItem(  label="Save", radialPosition="E",
-                    command="JSE.scriptEditorMethods('"+ctrl+"','save')" )
-    c.menuItem(  label="Save As", radialPosition="S",
-                    command="JSE.scriptEditorMethods('"+ctrl+"','saveAs')" )
-    c.menuItem(  label="Save All", radialPosition="N",
-                    command="JSE.scriptEditorMethods('"+ctrl+"','saveAll')" )
-    c.setParent("..",menu=1)
-
-    logger.debug(defEnd("Created Script Editor Menu"))
-    logger.debug("")
-
-
-def updateExpr(exprPanelayout):
-    global currentInputTabLabels
-
-    logger.debug(defStart("Creating/Saving Expression"))
-    logger.debug(var1("exprPanelayout",exprPanelayout))
-
-    logger.debug(head2("Get expression's formLayout, then it's children"))
-    exprForm = c.layout(exprPanelayout,q=1,childArray=1)[0]
-
-    convUnitMenu, evalMenu, defObjTxtField, cmdField = c.layout(exprForm,q=1,childArray=1)
-    convUnitValue = c.optionMenu( convUnitMenu,  q=1, select=1)-1
-    if   convUnitValue == 0: convUnitValue = "all"
-    elif convUnitValue == 1: convUnitValue = "none"
-    elif convUnitValue == 2: convUnitValue = "angularOnly"
-    evalValue     = c.optionMenu(     evalMenu,  q=1, select=1)-1
-    defObjText    = c.textField( defObjTxtField, q=1, text=1)
-    exprText      = c.cmdScrollFieldExecuter( cmdField, q=1, text=1)
-
-    logger.debug(head2("Get tab name for expression name"))
-    tabChildShort = re.split("\|",exprPanelayout)[-1]
-    logger.debug(var1( "tabChildShort", tabChildShort))
-    logger.debug(var1("exprPanelayout", exprPanelayout))
-    logger.debug(var1(      "(parent)", c.layout( exprPanelayout, q=1,parent=1)))
-    allTabLabels = c.tabLayout( c.layout( exprPanelayout, q=1,parent=1), q=1, tabLabel=1)
-    allTabChild  = c.tabLayout( c.layout( exprPanelayout, q=1,parent=1), q=1, ca=1)
-
-    for i,j in zip(allTabLabels,allTabChild):
-        if j==tabChildShort: currentTabLabel = i
-
-    logger.debug(var1(       "exprText",exprText))
-    logger.debug(var1("currentTabLabel",currentTabLabel))
-    logger.debug(var1(     "defObjText",defObjText))
-    logger.debug(var1(      "evalValue",evalValue))
-    logger.debug(var1(  "convUnitValue",convUnitValue))
-
-    c.expression(currentTabLabel,e=1, string=exprText,
-                                        name=currentTabLabel,
-                                      object=defObjText,
-                              alwaysEvaluate=evalValue,
-                              unitConversion=convUnitValue )
-
-
-    c.cmdScrollFieldExecuter( cmdField, e=1, text=c.expression(currentTabLabel,q=1, string=1) )
-
-    logger.debug(defEnd("Created/Saved Expression"))
+def setPane( paneType ):
+    
+    logger.debug(defStart("Setting Pane"))
+    logger.debug(var1("paneType",paneType))
+
+    logger.debug(defEnd("Set Pane"))
     logger.debug("")
 
 
@@ -972,121 +514,6 @@ def createOutput( parentPanelLayout ):
     logger.info(defEnd("Created output!"))
     logger.info("")
     return output
-
-
-def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation, exprDic={}):
-    '''
-        If there is no text then load from file
-    '''
-    logger.info(defStart("Making input tab"))
-    logger.debug(var1(    "tabUsage",tabUsage))
-    logger.debug(var1(  "pTabLayout",pTabLayout))
-    logger.debug(var1(    "tabLabel",tabLabel))
-    logger.debug(var1("fileLocation",fileLocation))
-    inputField = ""
-
-    if tabUsage == "mel"     : bkgndColour = [0.16, 0.16, 0.16]
-    if tabUsage == "expr"    : bkgndColour = [0.16, 0.13, 0.13]
-    if tabUsage == "python"  : bkgndColour = [0.12, 0.14, 0.15]
-    logger.debug(var1( "bkgndColour",bkgndColour))
-
-    if tabUsage == "python"  : tabLang = "python"
-    else                     : tabLang = "mel"
-    logger.debug(var1(     "tabLang",tabLang))
-
-
-    if tabUsage == "expr":
-        exprPanelayout = c.paneLayout( parent = pTabLayout, configuration='vertical2')
-
-        #========================================================================================================
-        exprForm = c.formLayout( parent = exprPanelayout)
-        #--------------------------------------------------------
-        angleOption = c.optionMenu( parent = exprForm)
-        option_All = c.menuItem(label="Convert All Units")
-        option_Non = c.menuItem(label="None")
-        option_Ang = c.menuItem(label="Angular only")
-        #--------------------------------------------------------
-        evalOption = c.optionMenu( parent = exprForm)
-        option_OnD = c.menuItem(label="On Demand")
-        option_Alw = c.menuItem(label="Always Evaluate")
-        option_AfC = c.menuItem(label="After Cloth")
-        c.optionMenu( evalOption, e=1, select = 2)
-        #--------------------------------------------------
-        defObject  = c.textField( parent = exprForm, placeholderText="Default Obj. e.g.pCube", w=150 )
-        #--------------------------------------------------------
-        inputField = c.cmdScrollFieldExecuter(  sourceType= "mel",
-                                                backgroundColor = bkgndColour,
-                                                parent=exprForm,
-
-                                                showLineNumbers=True )
-        logger.debug(var1("inputField",inputField))
-
-        c.formLayout(exprForm, e=1, attachForm=([angleOption, "top", 0],
-                                                [evalOption,  "top", 0],
-                                                [defObject,   "top", 0],
-                                                [defObject,   "right", 0],
-                                                [inputField,  "bottom", 0],
-                                                [inputField,  "right", 0],
-                                                [inputField,  "left", 0]),
-
-                          attachControl=([inputField, "top", 0, defObject],
-                                         [defObject,  "left", 0, evalOption],
-                                         [evalOption,  "left", 0, angleOption]) )
-
-        #========================================================================================================
-        attrForm = c.formLayout( parent = exprPanelayout)
-        #--------------------------------------------------------
-        objSearchField  = c.textFieldGrp( parent = attrForm, placeholderText="Search obj for attr", w=120 )
-        attrList      = c.textScrollList( parent = attrForm, append=["--NOTHING FOUND--"], enable=False)
-
-        c.textFieldGrp( objSearchField, e=1, textChangedCommand="JSE.listObjAttr('"+objSearchField+"','"+attrList+"')" )
-        c.textScrollList(     attrList, e=1, doubleClickCommand="JSE.attrInsert('"+inputField+"','"+objSearchField+"','"+attrList+"')" )
-
-        logger.debug(var1("textChangedCommand","JSE.listObjAttr('"+objSearchField+"','"+attrList+"')"))
-        c.formLayout(attrForm, e=1, attachForm=([objSearchField, "top", 0],
-                                                [objSearchField, "left", 0],
-                                                [objSearchField, "right", 0],
-                                                [attrList, "left", 0],
-                                                [attrList, "right", 0],
-                                                [attrList,  "bottom", 0]   ),
-                                 attachControl=([attrList, "top", 0, objSearchField]) )
-        tabLabel = c.expression(n=tabLabel)
-
-        createExpressionMenu(exprPanelayout)
-        createInputMenu(exprPanelayout)
-        createPaneMenu(exprPanelayout)
-
-    else:
-        inputField = c.cmdScrollFieldExecuter(  sourceType= tabLang,
-                                                backgroundColor = bkgndColour,
-                                                parent=pTabLayout,
-
-                                                showLineNumbers=True,
-                                                spacesPerTab=4,
-                                                autoCloseBraces=True,
-                                                showTooltipHelp=True,
-                                                objectPathCompletion=True,
-                                                commandCompletion=True )
-        logger.debug(var1("inputField",inputField))
-
-        with open(fileLocation,"r") as bufferFile:
-            c.cmdScrollFieldExecuter(inputField, e=1, text=bufferFile.read() )
-
-        # make sure the text is not selected
-        c.cmdScrollFieldExecuter(inputField, e=1, select=[0,0] )
-
-        createScriptEditorMenu(inputField)
-        createInputMenu(inputField)
-        createPaneMenu(inputField)
-
-    c.tabLayout(pTabLayout, e=1, tabLabel= [c.tabLayout(pTabLayout,
-                                                        q=1, childArray=1)[-1] ,# Get the name of the newest tab child created
-                                            tabLabel ] )                        # and rename that tab with our label
-
-
-
-    logger.info(defEnd("Made input tab"))
-    return inputField
 
 
 def createInput( parentUI, activeTabIndex=1 ):
@@ -1253,7 +680,534 @@ def createInput( parentUI, activeTabIndex=1 ):
     return inputLayout
 
 
-def saveTabs(justBackup=False,tabIndex=0):
+def refreshAllScematic():
+    global currentAllSchematic
+    global currentPaneScematic
+    schematicForDeletion = []
+    logger.debug(defStart("Refreshing all schematics"))
+    logger.debug(var1("currentAllSchematic",currentAllSchematic))
+
+    if len(currentAllSchematic[-1]):
+        for i in xrange(len(currentAllSchematic)):
+            logger.debug( head2("Schematic "+str(i)) )
+            windowSchematic = currentAllSchematic[i]
+            logger.debug(var1("windowSchematic",windowSchematic))
+
+            fullPathSplit = re.split("\|", windowSchematic[1])
+            logger.debug(var1("fullPathSplit",fullPathSplit))
+
+            if not c.window( fullPathSplit[0], q=1, exists=1):
+                logger.debug( head1("Schematic window doesn't exist"))
+                schematicForDeletion.append( i )
+                logger.debug(var1("schematicForDeletion",schematicForDeletion))
+            else:
+                for j in xrange(0 , len(windowSchematic), 2):
+                    treeNodeType  = windowSchematic[j][0]
+                    logger.debug(var1("treeNodeType",treeNodeType))
+
+                    ctrlOrLayOnly = re.split("\|",windowSchematic[j+1])[-1]
+                    
+                    try:    ctrlOrLayNew = c.control(ctrlOrLayOnly, q=1, fullPathName=1)
+                    except: ctrlOrLayNew = c.layout( ctrlOrLayOnly, q=1, fullPathName=1)
+                    logger.debug(var1("ctrlOrLayNew",ctrlOrLayNew))
+
+                    windowSchematic[j+1] = ctrlOrLayNew
+                    if treeNodeType == "V":
+                        windowSchematic[j] = treeNodeType+str(c.paneLayout( ctrlOrLayNew , q=1, paneSize=1)[0])
+
+                    elif treeNodeType == "H":
+                        windowSchematic[j] = treeNodeType+str(c.paneLayout( ctrlOrLayNew , q=1, paneSize=1)[1])
+
+                    elif treeNodeType == "I":
+                        childTabLay = c.layout(ctrlOrLayNew,q=1,childArray=1)[0]
+                        windowSchematic[j] = treeNodeType+str(c.tabLayout( childTabLay , q=1, selectTabIndex=1) )
+
+
+
+
+
+        logger.debug( head2("Deleting schematics marked for deletion") )
+        logger.debug(var1("schematicForDeletion",schematicForDeletion))
+        # Remove lists from the back to front to avoid out of range issues
+        for i in reversed(schematicForDeletion):
+            currentAllSchematic.pop(i)
+            logger.debug(var1("schematicForDeletion",schematicForDeletion))
+            logger.debug(var1("currentAllSchematic",currentAllSchematic))
+
+        logger.debug(var1("final currentAllSchematic",currentAllSchematic))
+        currentPaneScematic = []
+        for i in xrange(0,len(currentAllSchematic[-1]),2):
+            currentPaneScematic.append( currentAllSchematic[-1][i] )
+
+        logger.debug(var1("new currentPaneScematic",currentPaneScematic))
+    logger.debug(defStart("Refreshed all schematics"))
+
+
+def createPaneMenu( ctrl ):
+    logger.debug(defStart("Creating Pane Menu"))
+    logger.debug(var1("ctrl",ctrl))
+
+    c.popupMenu( parent=ctrl , altModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
+    c.menuItem(  label="New Right", radialPosition="E",
+                    command="JSE.split('"+ctrl+"','right',True)" )
+    c.menuItem(  label="New Right", radialPosition="E", optionBox=True,
+                    command="JSE.split('"+ctrl+"','right',False)" )
+
+    c.menuItem(  label="New Left", radialPosition="W",
+                    command="JSE.split('"+ctrl+"','left',True)" )
+    c.menuItem(  label="New Left", radialPosition="W", optionBox=True,
+                    command="JSE.split('"+ctrl+"','left', False)" )
+
+    c.menuItem(  label="New Below", radialPosition="S",
+                    command="JSE.split('"+ctrl+"','bottom',True)" )
+    c.menuItem(  label="New Below", radialPosition="S", optionBox=True,
+                    command="JSE.split('"+ctrl+"','bottom', False)" )
+
+    c.menuItem(  label="New Above", radialPosition="N",
+                    command="JSE.split('"+ctrl+"','top',True)" )
+    c.menuItem(  label="New Above", radialPosition="N", optionBox=True,
+                    command="JSE.split('"+ctrl+"','top', False)" )
+
+
+    c.menuItem(  label="---Pane Menu (Alt)---", enable=False)
+    c.menuItem(  label="Remove This Pane!",
+                    command="JSE.deletePane('"+ctrl+"')")
+
+    logger.debug(defEnd("Created Pane Menu"))
+    logger.debug("")
+
+
+####### Input Related #######
+
+def inputPaneMethods(ctrl, method):
+    global OutputSnapshotsPath
+    logger.debug(defStart("Input method processing"))
+    logger.debug(var1("ctrl",ctrl))
+    logger.debug(var1("method",method))
+
+    if method[:12] == "createScript":
+        print "---Navigate tree and create tab on all layouts---"
+        # c.cmdScrollFieldExecuter(sourceType=method[12:])
+
+    elif method == "createExpression":
+        print "---Need to create expression---"
+
+
+    logger.debug(defEnd("Input method processed"))
+    logger.debug("")
+
+
+def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation, exprDic={}):
+    '''
+        If there is no text then load from file
+    '''
+    logger.info(defStart("Making input tab"))
+    logger.debug(var1(    "tabUsage",tabUsage))
+    logger.debug(var1(  "pTabLayout",pTabLayout))
+    logger.debug(var1(    "tabLabel",tabLabel))
+    logger.debug(var1("fileLocation",fileLocation))
+    inputField = ""
+
+    if tabUsage == "mel"     : bkgndColour = [0.16, 0.16, 0.16]
+    if tabUsage == "expr"    : bkgndColour = [0.16, 0.13, 0.13]
+    if tabUsage == "python"  : bkgndColour = [0.12, 0.14, 0.15]
+    logger.debug(var1( "bkgndColour",bkgndColour))
+
+    if tabUsage == "python"  : tabLang = "python"
+    else                     : tabLang = "mel"
+    logger.debug(var1(     "tabLang",tabLang))
+
+
+    if tabUsage == "expr":
+        exprPanelayout = c.paneLayout( parent = pTabLayout, configuration='vertical2')
+
+        #========================================================================================================
+        exprForm = c.formLayout( parent = exprPanelayout)
+        #--------------------------------------------------------
+        angleOption = c.optionMenu( parent = exprForm)
+        option_All = c.menuItem(label="Convert All Units")
+        option_Non = c.menuItem(label="None")
+        option_Ang = c.menuItem(label="Angular only")
+        #--------------------------------------------------------
+        evalOption = c.optionMenu( parent = exprForm)
+        option_OnD = c.menuItem(label="On Demand")
+        option_Alw = c.menuItem(label="Always Evaluate")
+        option_AfC = c.menuItem(label="After Cloth")
+        c.optionMenu( evalOption, e=1, select = 2)
+        #--------------------------------------------------
+        defObject  = c.textField( parent = exprForm, placeholderText="Default Obj. e.g.pCube", w=150 )
+        #--------------------------------------------------------
+        inputField = c.cmdScrollFieldExecuter(  sourceType= "mel",
+                                                backgroundColor = bkgndColour,
+                                                parent=exprForm,
+
+                                                showLineNumbers=True )
+        logger.debug(var1("inputField",inputField))
+
+        c.formLayout(exprForm, e=1, attachForm=([angleOption, "top", 0],
+                                                [evalOption,  "top", 0],
+                                                [defObject,   "top", 0],
+                                                [defObject,   "right", 0],
+                                                [inputField,  "bottom", 0],
+                                                [inputField,  "right", 0],
+                                                [inputField,  "left", 0]),
+
+                          attachControl=([inputField, "top", 0, defObject],
+                                         [defObject,  "left", 0, evalOption],
+                                         [evalOption,  "left", 0, angleOption]) )
+
+        #========================================================================================================
+        attrForm = c.formLayout( parent = exprPanelayout)
+        #--------------------------------------------------------
+        objSearchField  = c.textFieldGrp( parent = attrForm, placeholderText="Search obj for attr", w=120 )
+        attrList      = c.textScrollList( parent = attrForm, append=["--NOTHING FOUND--"], enable=False)
+
+        c.textFieldGrp( objSearchField, e=1, textChangedCommand="JSE.listObjAttr('"+objSearchField+"','"+attrList+"')" )
+        c.textScrollList(     attrList, e=1, doubleClickCommand="JSE.attrInsert('"+inputField+"','"+objSearchField+"','"+attrList+"')" )
+
+        logger.debug(var1("textChangedCommand","JSE.listObjAttr('"+objSearchField+"','"+attrList+"')"))
+        c.formLayout(attrForm, e=1, attachForm=([objSearchField, "top", 0],
+                                                [objSearchField, "left", 0],
+                                                [objSearchField, "right", 0],
+                                                [attrList, "left", 0],
+                                                [attrList, "right", 0],
+                                                [attrList,  "bottom", 0]   ),
+                                 attachControl=([attrList, "top", 0, objSearchField]) )
+        tabLabel = c.expression(n=tabLabel)
+
+        createExpressionMenu(exprPanelayout)
+        createInputMenu(exprPanelayout)
+        createPaneMenu(exprPanelayout)
+
+    else:
+        inputField = c.cmdScrollFieldExecuter(  sourceType= tabLang,
+                                                backgroundColor = bkgndColour,
+                                                parent=pTabLayout,
+
+                                                showLineNumbers=True,
+                                                spacesPerTab=4,
+                                                autoCloseBraces=True,
+                                                showTooltipHelp=True,
+                                                objectPathCompletion=True,
+                                                commandCompletion=True )
+        logger.debug(var1("inputField",inputField))
+
+        with open(fileLocation,"r") as bufferFile:
+            c.cmdScrollFieldExecuter(inputField, e=1, text=bufferFile.read() )
+
+        # make sure the text is not selected
+        c.cmdScrollFieldExecuter(inputField, e=1, select=[0,0] )
+
+        createScriptEditorMenu(inputField)
+        createInputMenu(inputField)
+        createPaneMenu(inputField)
+
+    c.tabLayout(pTabLayout, e=1, tabLabel= [c.tabLayout(pTabLayout,
+                                                        q=1, childArray=1)[-1] ,# Get the name of the newest tab child created
+                                            tabLabel ] )                        # and rename that tab with our label
+
+
+
+    logger.info(defEnd("Made input tab"))
+    return inputField
+
+
+def createInputMenu( ctrl ):
+    logger.debug(defStart("Creating Input Menu"))
+    logger.debug(var1("ctrl",ctrl))
+
+    c.popupMenu( parent=ctrl , shiftModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
+
+    c.menuItem(  label="Create Tab...", radialPosition="N", subMenu=True)
+    c.menuItem(  label="Create Python", radialPosition="E",
+                    command="JSE.inputPaneMethods('"+ctrl+"','createScriptpython')" )
+    c.menuItem(  label="Create MEL", radialPosition="W",
+                    command="JSE.inputPaneMethods('"+ctrl+"','createScriptmel')" )
+    c.menuItem(  label="Create Expression", radialPosition="N",
+                    command="JSE.inputPaneMethods('"+ctrl+"','createExpression')" )
+
+    c.setParent("..", menu=True)
+    c.menuItem(  label="---Input Menu (Shift)---", enable=False)
+    c.menuItem(  label="", command="")
+
+    logger.debug(defEnd("Created Input Menu"))
+    logger.debug("")
+
+
+####### Expression Related #######
+
+def attrInsert(cmdField, objSearchField, attrField):
+    logger.debug(defStart("Inserting attribute to expression field"))
+    logger.debug(var1(      "cmdField",cmdField))
+    logger.debug(var1("objSearchField",objSearchField))
+    logger.debug(var1(     "attrField",attrField))
+
+    logger.debug(head2("Get selected attributes and combine with object string"))
+    attrText = re.split(" ",c.textScrollList(attrField, q=1, selectItem=1)[0])[0]
+    objText  = c.textFieldGrp(objSearchField, q=1, text=1)
+    logger.debug( var1("attrText",attrText))
+    logger.debug( var1( "objText",objText))
+
+    logger.debug(head2("Insert it into the expression field (at current cursor pos)"))
+    c.cmdScrollFieldExecuter(cmdField, e=1, insertText="{0}.{1}".format(objText, attrText))
+
+    logger.debug(defEnd("Inserted attribute to expression field"))
+    logger.debug("")
+
+
+def listObjAttr(objTextField, scrollListToOutput):
+    # If the current object is not valid then get outta here
+    logger.debug(defStart("Listing object attributes") )
+    logger.debug(var1(      "objTextField",objTextField))
+    logger.debug(var1("scrollListToOutput",scrollListToOutput))
+
+    c.textScrollList( scrollListToOutput, e=1, removeAll=1)
+    objInQuestion = c.textFieldGrp( objTextField, q=1, text=1)
+    logger.debug(var1(     "objInQuestion",objInQuestion))
+
+    try:    attrLong = c.listAttr(objInQuestion)
+    except:
+        c.textScrollList( scrollListToOutput, e=1, append=["--NOTHING FOUND--"], enable=False)
+        return
+    attrShrt = c.listAttr(objInQuestion, shortNames=1)
+
+    logger.debug(var1(          "attrLong",attrLong))
+    logger.debug(var1(          "attrShrt",attrShrt))
+
+    attrTxt = []
+    for i,j in zip(attrLong,attrShrt):
+        attrTxt.append( "{0} ({1})".format(i,j) )
+
+    sorted(attrTxt)
+    c.textScrollList( scrollListToOutput, e=1, append=attrTxt, enable=True)
+    logger.debug(defEnd("Listed object attributes") )
+
+
+def updateExpr(exprPanelayout):
+    global currentInputTabLabels
+
+    logger.debug(defStart("Creating/Saving Expression"))
+    logger.debug(var1("exprPanelayout",exprPanelayout))
+
+    logger.debug(head2("Get expression's formLayout, then it's children"))
+    exprForm = c.layout(exprPanelayout,q=1,childArray=1)[0]
+
+    convUnitMenu, evalMenu, defObjTxtField, cmdField = c.layout(exprForm,q=1,childArray=1)
+    convUnitValue = c.optionMenu( convUnitMenu,  q=1, select=1)-1
+    if   convUnitValue == 0: convUnitValue = "all"
+    elif convUnitValue == 1: convUnitValue = "none"
+    elif convUnitValue == 2: convUnitValue = "angularOnly"
+    evalValue     = c.optionMenu(     evalMenu,  q=1, select=1)-1
+    defObjText    = c.textField( defObjTxtField, q=1, text=1)
+    exprText      = c.cmdScrollFieldExecuter( cmdField, q=1, text=1)
+
+    logger.debug(head2("Get tab name for expression name"))
+    tabChildShort = re.split("\|",exprPanelayout)[-1]
+    logger.debug(var1( "tabChildShort", tabChildShort))
+    logger.debug(var1("exprPanelayout", exprPanelayout))
+    logger.debug(var1(      "(parent)", c.layout( exprPanelayout, q=1,parent=1)))
+    allTabLabels = c.tabLayout( c.layout( exprPanelayout, q=1,parent=1), q=1, tabLabel=1)
+    allTabChild  = c.tabLayout( c.layout( exprPanelayout, q=1,parent=1), q=1, ca=1)
+
+    for i,j in zip(allTabLabels,allTabChild):
+        if j==tabChildShort: currentTabLabel = i
+
+    logger.debug(var1(       "exprText",exprText))
+    logger.debug(var1("currentTabLabel",currentTabLabel))
+    logger.debug(var1(     "defObjText",defObjText))
+    logger.debug(var1(      "evalValue",evalValue))
+    logger.debug(var1(  "convUnitValue",convUnitValue))
+
+    c.expression(currentTabLabel,e=1, string=exprText,
+                                        name=currentTabLabel,
+                                      object=defObjText,
+                              alwaysEvaluate=evalValue,
+                              unitConversion=convUnitValue )
+
+
+    c.cmdScrollFieldExecuter( cmdField, e=1, text=c.expression(currentTabLabel,q=1, string=1) )
+
+    logger.debug(defEnd("Created/Saved Expression"))
+    logger.debug("")
+
+
+def createExpressionMenu( ctrl ):
+    logger.debug(defStart("Creating Expression Menu"))
+    logger.debug(var1("ctrl",ctrl))
+
+    c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
+    c.menuItem(  label="New Expression", radialPosition="E",
+                    command="JSE.logger.debug('New Expression')" )
+    c.menuItem(  label="Save to file", radialPosition="W",
+                    command="JSE.logger.debug('Save expression to file')" )
+    c.menuItem(  label="Close Expression", radialPosition="S",
+                    command="JSE.logger.debug('Unregister Expression')" )
+    c.menuItem(  label="Update Expression", radialPosition="N",
+                    command="JSE.updateExpr('"+ctrl+"')" )
+
+    c.menuItem(  label="----Expression Menu----", enable=False)
+
+    logger.debug(defEnd("Created Expression Menu"))
+    logger.debug("")
+
+
+####### Output Related #######
+
+def outputPaneMethods(ctrl, method, *arg):
+    global OutputSnapshotsPath
+    logger.debug(defStart("Output method processing"))
+    logger.debug(var1("ctrl",ctrl))
+    logger.debug(var1("method",method))
+
+    if "snapshot" in method:
+        newSnapshotFileName = OutputSnapshotsPath+c.date(format="YYYY-MMm-DDd-hhhmmmss.txt")
+        logger.debug( var1("snapshot to file", newSnapshotFileName ))
+
+        with open(newSnapshotFileName,"w") as snapshotFile:
+            snapshotFile.write(c.cmdScrollFieldReporter(ctrl, q=1, text=1))
+        c.cmdScrollFieldReporter(ctrl, e=1, clear=1)
+
+        snapshotList = c.getFileList(folder=OutputSnapshotsPath, filespec='*' )
+        logger.debug( var1("new snapshotList", snapshotList ))
+        for i in snapshotList[20:]:
+            logger.debug( var1("deleting", i ))
+            c.sysFile(OutputSnapshotsPath+i,delete=1)
+
+    if "Wipe" in method:
+        c.cmdScrollFieldReporter(ctrl, e=1, clear=1)
+
+    logger.debug(defEnd("Output method processed"))
+    logger.debug("")
+
+
+def createOutputMenu( ctrl ):
+    logger.debug(defStart("Creating Output Menu"))
+    logger.debug(var1("ctrl",ctrl))
+
+    c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
+    c.menuItem(  label="Snapshot then Wipe", radialPosition="N",
+                    command="JSE.outputPaneMethods('"+ctrl+"','snapshotWipe')" )
+    c.menuItem(  label="Wipe", radialPosition="E",
+                    command="JSE.outputPaneMethods('"+ctrl+"','Wipe')" )
+    c.menuItem(  label="Snapshot", radialPosition="W",
+                    command="JSE.outputPaneMethods('"+ctrl+"','snapshot')" )
+
+    c.menuItem(  label="---Output Menu---", enable=False)
+    c.menuItem(  label="", command="")
+
+    logger.debug(defEnd("Created Output Menu"))
+    logger.debug("")
+
+
+####### Script Editor Related #######
+
+def scriptEditorMethods(ctrl, method, *arg):
+    global OutputSnapshotsPath
+    logger.debug(defStart("Script editor method processing"))
+    logger.debug(var1("ctrl",ctrl))
+    logger.debug(var1("method",method))
+
+    if method == "run":
+        logger.debug(head2("Executing script text"))
+
+        scriptIsMEL = ( c.cmdScrollFieldExecuter(ctrl, q=1, sourceType=1) == "mel" )
+        logger.debug( var1("scriptIsMEL",scriptIsMEL) )
+
+        if c.cmdScrollFieldExecuter(ctrl, q=1, hasSelection=1):  scriptToRun = c.cmdScrollFieldExecuter(ctrl, q=1, selectedText=1)
+        else:                                                    scriptToRun = c.cmdScrollFieldExecuter(ctrl, q=1, text=1)
+
+        logger.debug( var1("scriptToRun",scriptToRun) )
+
+        saveInputTabs()
+
+        if scriptIsMEL: melEval(scriptToRun)
+        else:           c.evalDeferred(scriptToRun)
+
+        logger.debug(head2("Executed script text") )
+
+    elif method[:4] == "save":
+        logger.debug(head2("Saving script") )
+        global currentInputTabFiles
+        logger.debug( var1("currentInputTabFiles",currentInputTabFiles))
+        
+        '''
+        This procedure saves the current active tab's script to a file. If...
+
+        Current tab has file location |  and saveAs is  | then...
+        ==============================|=================|===========================
+                    Yes               |       Yes       |   Save to new file
+        ------------------------------|-----------------|---------------------------
+                    No                |       Yes       |   Save to new file
+        ------------------------------|-----------------|---------------------------
+                    Yes               |       No        |   Save to file location
+        ------------------------------|-----------------|---------------------------
+                    No                |       No        |   Save to new file
+        '''
+        paneSection,parentPaneLayout = navigateToParentPaneLayout(ctrl)
+        logger.debug( var1("paneSection",paneSection))
+        logger.debug( var1("(children)",c.layout(paneSection, q=1, childArray=1) ))
+
+        #   1/ Navigate to pane parent tab
+        parentTabLayout = paneSection+"|"+c.layout(paneSection, q=1, childArray=1)[0]
+        logger.debug( var1("parentTabLayout",parentTabLayout))
+        logger.debug( var1("selectTabIndex",c.tabLayout(parentTabLayout,q=1, selectTabIndex=1) ))
+
+        #   2/ Find out which tab index
+        #   3/ Get Pane file location using tab index
+        tabFileLocation = currentInputTabFiles[ c.tabLayout(parentTabLayout,q=1, selectTabIndex=1)-1 ]
+        logger.debug( var1("tabFileLocation",tabFileLocation))
+
+        #   4/ Find out if method[5:]=="As"
+        logger.debug( var1("method[-2:]",method[-2:]))
+        #   5/ Do the boolean table to find out whether save as or save
+
+        # Save as
+        #   1/ Navigate to pane parent tab
+        #   2/ Get tab label using child name of tab layout
+        #   3/ Get tab language
+        #   4/ File save dialog with label+language
+        #   5/ Get final file name and location
+        #   6/ Place in file location array
+        #   7/ Sync optionVars
+
+        # Save
+        #   1/ Python open file
+        #   2/ Get tab contents
+        #   3/ Write to file
+        #   4/ Close file
+
+
+
+
+        logger.debug(head2("Saved script") )
+
+
+    logger.debug(defEnd("Script editor method processed"))
+    logger.debug("")
+
+
+def createScriptEditorMenu( ctrl ):
+    logger.debug(defStart("Creating Script Editor Menu"))
+    logger.debug(var1("ctrl",ctrl))
+
+    c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
+    c.menuItem(  label="Run code", radialPosition="N",
+                    command="JSE.scriptEditorMethods('"+ctrl+"','run')" )
+
+    c.menuItem(  label="Save...", radialPosition="E", subMenu=True)
+    c.menuItem(  label="Save", radialPosition="E",
+                    command="JSE.scriptEditorMethods('"+ctrl+"','save')" )
+    c.menuItem(  label="Save As", radialPosition="S",
+                    command="JSE.scriptEditorMethods('"+ctrl+"','saveAs')" )
+    c.menuItem(  label="Save All", radialPosition="N",
+                    command="JSE.scriptEditorMethods('"+ctrl+"','saveAll')" )
+    c.setParent("..",menu=1)
+
+    logger.debug(defEnd("Created Script Editor Menu"))
+    logger.debug("")
+
+
+def saveInputTabs(justBackup=False,tabIndex=0):
     global currentInputTabType
     global currentInputTabLabels
     global currentInputTabFiles
@@ -1362,6 +1316,36 @@ def wipeOptionVars():
                 message="JSE optionVars wiped! Reactor core highly unstable...\nCLOSE IT DOWN AND GET OUTTA THERE!")
 
 
+####### Debug Related #######
+
+def createDebugMenu( ctrl ):
+    logger.debug(defStart("Creating Debug Menu"))
+    logger.debug(var1("ctrl",ctrl))
+
+    c.popupMenu( parent=ctrl , markingMenu=True,
+                 shiftModifier=True, ctrlModifier=True, altModifier=True ) # markingMenu = Enable pie style menu
+    c.menuItem(  label="wipeOptionVars", radialPosition="E",
+                    command="JSE.wipeOptionVars()" )
+    c.menuItem(  label="refreshAllScematic", radialPosition="W",
+                    command="JSE.refreshAllScematic()" )
+    c.menuItem(  label="debugGlobals", radialPosition="S",
+                    command="JSE.debugGlobals()" )
+    c.menuItem(  label="Reload", radialPosition="N",
+                    command="reload(JSE)" )
+
+    c.menuItem(  label="Run in... [SetLevel]", enable=False)
+    c.menuItem(  label="Debug",  command="JSE.run(0,JSE.logging.DEBUG)")
+    c.menuItem(  optionBox=True, command="JSE.logger.setLevel(JSE.logging.DEBUG)")
+    c.menuItem(  label="Info",   command="JSE.run(0,JSE.logging.INFO)")
+    c.menuItem(  optionBox=True, command="JSE.logger.setLevel(JSE.logging.INFO)")
+    c.menuItem(  label="Error",  command="JSE.run(0,JSE.logging.ERROR)")
+    c.menuItem(  optionBox=True, command="JSE.logger.setLevel(JSE.logging.ERROR)")
+
+
+    logger.debug(defEnd("Created Debug Menu"))
+    logger.debug("")
+
+
 def layoutJSE():
     logger.info(defStart("Layout JSE"))
     def recursiveLayoutTraverse(JSELayout, layerNum):
@@ -1438,10 +1422,6 @@ def layoutJSE():
     '''
 
 
-def setPane( paneType ):
-    pass
-
-
 def debugGlobals():
     global currentInputTabType
     global currentInputTabLabels
@@ -1491,8 +1471,6 @@ def run(dockable, loggingLevel=logging.ERROR):
     global currentPaneScematic
     global InputBuffersPath
     global OutputSnapshotsPath
-    global window
-    global layout
     global engaged
 
     # Logger levels: CRITICAL ERROR WARNING INFO DEBUG NOTSET
@@ -1503,7 +1481,6 @@ def run(dockable, loggingLevel=logging.ERROR):
     debugGlobals()
 
     #---- Setup ----
-
     JSE_Path = c.about(preferences=1)+"/prefs/JSE/"
     c.sysFile(JSE_Path,makeDir=True)
 
@@ -1527,7 +1504,7 @@ def run(dockable, loggingLevel=logging.ERROR):
     #     currentPaneScematic.append(currentAllSchematic[-1][i])
 
     engaged = True
-    saveTabs()
+    saveInputTabs()
 
     if dockable:
         c.dockControl("JSE",area='left',floating=True,content=window)
