@@ -74,6 +74,9 @@ def navigateToParentPaneLayout(paneSection):
     (returned)              called the split, initially initialised to paneSection
                             in order to start the parent traversal algorithm
     """
+    logger.info(defStart("Navigating to parent paneLayout"))
+    logger.debug(var1("paneSection",paneSection))
+
     try: parentPaneLayout = c.control(paneSection, query=True, parent=True)
     except: parentPaneLayout = c.layout(paneSection, query=True, parent=True)
     logger.debug(var1(        "parentPaneLayout",parentPaneLayout))
@@ -91,6 +94,7 @@ def navigateToParentPaneLayout(paneSection):
     logger.debug(var1(   "child is (paneSection)",paneSection))
     logger.debug(var1(                 "(exist?)",c.control(paneSection,q=1,ex=1)) )
 
+    logger.info(defEnd("Navigated to parent paneLayout"))
     return paneSection,parentPaneLayout
 
 
@@ -366,13 +370,14 @@ def refreshAllScematic():
     schematicForDeletion = []
     logger.debug(defStart("Refreshing all schematics"))
     logger.debug(var1("currentAllSchematic",currentAllSchematic))
+
     if len(currentAllSchematic[-1]):
         for i in xrange(len(currentAllSchematic)):
             logger.debug( head2("Schematic "+str(i)) )
             windowSchematic = currentAllSchematic[i]
             logger.debug(var1("windowSchematic",windowSchematic))
 
-            fullPathSplit = re.split("\|", windowSchematic[i+1])
+            fullPathSplit = re.split("\|", windowSchematic[1])
             logger.debug(var1("fullPathSplit",fullPathSplit))
 
             if not c.window( fullPathSplit[0], q=1, exists=1):
@@ -805,6 +810,10 @@ def scriptEditorMethods(ctrl, method, *arg):
         logger.debug(head2("Executed script text") )
 
     elif method[:4] == "save":
+        logger.debug(head2("Saving script") )
+        global currentInputTabFiles
+        logger.debug( var1("currentInputTabFiles",currentInputTabFiles))
+        
         '''
         This procedure saves the current active tab's script to a file. If...
 
@@ -818,12 +827,22 @@ def scriptEditorMethods(ctrl, method, *arg):
         ------------------------------|-----------------|---------------------------
                     No                |       No        |   Save to new file
         '''
-        logger.debug(head2("Saving script") )
         paneSection,parentPaneLayout = navigateToParentPaneLayout(ctrl)
+        logger.debug( var1("paneSection",paneSection))
+        logger.debug( var1("(children)",c.layout(paneSection, q=1, childArray=1) ))
+
         #   1/ Navigate to pane parent tab
+        parentTabLayout = paneSection+"|"+c.layout(paneSection, q=1, childArray=1)[0]
+        logger.debug( var1("parentTabLayout",parentTabLayout))
+        logger.debug( var1("selectTabIndex",c.tabLayout(parentTabLayout,q=1, selectTabIndex=1) ))
+
         #   2/ Find out which tab index
         #   3/ Get Pane file location using tab index
+        tabFileLocation = currentInputTabFiles[ c.tabLayout(parentTabLayout,q=1, selectTabIndex=1)-1 ]
+        logger.debug( var1("tabFileLocation",tabFileLocation))
+
         #   4/ Find out if method[5:]=="As"
+        logger.debug( var1("method[-2:]",method[-2:]))
         #   5/ Do the boolean table to find out whether save as or save
 
         # Save as
