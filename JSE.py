@@ -111,7 +111,8 @@ def constructJSE( paneSection, buildSchematic ):
     global currentAllSchematic
 
     def constructSplits(paneCfgTxt, paneEditSize, buildSchematic=buildSchematic):
-        newPaneLayout = c.paneLayout(configuration=paneCfgTxt,parent=paneSection)
+        newPaneLayout = c.paneLayout(configuration=paneCfgTxt,parent=paneSection, 
+                                     separatorMovedCommand="JSE.refreshAllScematic()")
         currentAllSchematic[-1].append(newPaneLayout)
         logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
 
@@ -337,7 +338,8 @@ def split( paneSection, re_assign_position, newPaneIsInput):
     logger.debug(var1("oldSectionPaneIndex",oldSectionPaneIndex ))
 
     logger.debug(head2("Setting values for new paneLayouts" ) )
-    newPaneLayout =  c.paneLayout(configuration=paneConfig, parent=parentPaneLayout)
+    newPaneLayout =  c.paneLayout(configuration=paneConfig, parent=parentPaneLayout, 
+                                  separatorMovedCommand="JSE.refreshAllScematic()")
 
 
     logger.debug(var1("parentPaneLayout",parentPaneLayout ))
@@ -648,8 +650,11 @@ def createInput( parentUI, activeTabIndex=1 ):
             logger.debug(var1( "currentInputTabFiles[i]",currentInputTabFiles[i]))
             if re.match(".*/commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]):
                 fileLocation = currentInputTabFiles[i]
+                currentInputTabFiles[i] = ""
+                logger.debug(var1("new currentInputTabFiles[i]",currentInputTabFiles[i]))
             else:
                 fileLocation = InputBuffersPath+"JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt
+            
             currentInputTabs.append(
                 makeInputTab(   currentInputTabType[i],
                                 inputTabsLay,
@@ -1199,15 +1204,38 @@ def scriptEditorMethods(ctrl, method, *arg):
             logger.debug( head2("Save all"))
             for i in xrange( len(parentTabLayChildArray) ):
                 pass
+        else:
+            if method.endswith("As"):
+                #   1/ Navigate to pane parent tab (done)
+                #   2/ Get tab label 
+                fileName_tabLabel = parentTabLayLabelArray[selectedTabIndex-1]
+                
+                #   3/ Get tab language
+                tabCmdField = parentTabLayChildArray[selectedTabIndex-1]
+                rawTabLang = c.cmdScrollFieldExecuter( tabCmdField, q=1, sourceType=1)
 
-        # Save as
-        #   1/ Navigate to pane parent tab
-        #   2/ Get tab label using child name of tab layout
-        #   3/ Get tab language
-        #   4/ File save dialog with label+language
-        #   5/ Get final file name and location
-        #   6/ Place in file location array
-        #   7/ Sync optionVars
+                if rawTabLang == "python": 
+                    fileExt = ".py"
+                    selectedFileFilter = "Python"
+                else: 
+                    fileExt = ".mel"
+                    selectedFileFilter = "MEL"
+
+                #   4/ File save dialog with label+language
+                logger.debug( head2("Saving....") )
+                allCode = c.cmdScrollFieldExecuter( tabCmdField, q=1, text=1)
+
+                multipleFilters = "Python (*.y);;MEL (*.mle);;All Files (*.*)"
+                returnedFile = c.fileDialog2(fileFilter=multipleFilters, dialogStyle=2)[0]
+                currentInputTabFiles[selectedTabIndex] = returnedFile
+
+                syncAll()
+                logger.debug( head2("Saved") )
+
+                
+            else:
+                saveInputTabs(selectedTabIndex)
+
 
         # Save
         #   1/ Python open file
@@ -1249,7 +1277,7 @@ def createScriptEditorMenu( ctrl ):
 
 ################################################      Maintainance      ################################################
 
-def saveInputTabs(justBackup=False,tabIndex=0):
+def saveInputTabs(tabIndex=0):
     global currentInputTabType
     global currentInputTabLabels
     global currentInputTabFiles
@@ -1259,7 +1287,6 @@ def saveInputTabs(justBackup=False,tabIndex=0):
     logger.info(defStart("Saving All"))
 
     logger.debug(var1("InputBuffersPath",InputBuffersPath))
-    logger.debug(var1("justBackup",justBackup))
     logger.debug(var1("tabIndex",tabIndex))
     debugGlobals()
 
@@ -1296,7 +1323,7 @@ def saveInputTabs(justBackup=False,tabIndex=0):
         if re.match(".*/commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]): currentInputTabFiles[i]=""
 
         if currentInputTabType[i] != "expr":
-            fileExt=""
+
             if currentInputTabType[i] == "python": fileExt = "py"
             else: fileExt = "mel"
 
@@ -1308,7 +1335,7 @@ def saveInputTabs(justBackup=False,tabIndex=0):
             """
             Do the same for actual file paths that the script may be opened from
             """
-            if currentInputTabFiles[i] and not justBackup:
+            if (currentInputTabFiles[i] and not justBackup) or :
                 c.sysFile( currentInputTabFiles[i], delete=1)
                 c.cmdScrollFieldExecuter(currentInputTabs[i], e=1,
                                          storeContents = currentInputTabFiles[i] )
@@ -1472,11 +1499,10 @@ def debugGlobals():
     global currentInputTabLayouts
     global currentPaneScematic
     global currentAllSchematic
-    global window
-    global layout
     global engaged
 
-    head1("JSE  Debug Globals")
+    logger.debug(defStart("JSE Debug Globals"))
+    logger.debug("                      engaged: %s",engaged)
     logger.debug("   currentInputTabType, size : %s",len(currentInputTabType))
     logger.debug("%s",currentInputTabType)
     logger.debug("")
@@ -1499,10 +1525,8 @@ def debugGlobals():
     logger.debug("")
     logger.debug("    currentAllSchematic, size : %s",len(currentAllSchematic))
     logger.debug("%s",currentAllSchematic)
+    logger.debug(defEnd("JSE Debug Globals"))
     logger.debug("")
-    logger.debug("                      window : %s",window)
-    logger.debug("                      layout : %s",layout)
-    logger.debug("                      engaged: %s",engaged)
 
 ##################################################################################################################
 
