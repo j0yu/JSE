@@ -53,9 +53,10 @@ def defEnd(text): return "{:/>80}".format(" "+str(text))
 def head1(text): return "{:=^80}".format(" "+str(text)+" ")
 def head2(text): return "{:-^80}".format(" "+str(text)+" ")
 def var1(inText,inVar): return "{:>30} -- {!s}".format(str(inText) , str(inVar) )
+def var2(inText,inVar): return "{:>31} - {!s}".format("("+str(inText)+")" , str(inVar) )
 
 
-####### Pane Related #######
+################################################      PaneRelated       ################################################
 
 def navigateToParentPaneLayout(paneSection):
     """
@@ -98,7 +99,7 @@ def navigateToParentPaneLayout(paneSection):
     return paneSection,parentPaneLayout
 
 
-def constructSplits( paneSection, buildSchematic ):
+def constructJSE( paneSection, buildSchematic ):
     """
     Procedure to split the current pane into 2 panes, or set up the default
     script editor panels if this is the first time it is run
@@ -109,7 +110,65 @@ def constructSplits( paneSection, buildSchematic ):
     global currentInputTabLayouts
     global currentAllSchematic
 
-    logger.info(defStart("Splitting"))
+    def constructSplits(paneCfgTxt, paneEditSize, buildSchematic=buildSchematic):
+        newPaneLayout = c.paneLayout(configuration=paneCfgTxt,parent=paneSection)
+        currentAllSchematic[-1].append(newPaneLayout)
+        logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
+
+        logger.debug( var1("buildSchematic[0]",buildSchematic[0]))
+        if (buildSchematic[0][0]=="V") or (buildSchematic[0][0]=="H"):
+            paneChild1,buildSchematic = constructJSE( newPaneLayout, buildSchematic)
+            logger.debug(var1("buildSchematic becomes",buildSchematic))
+            logger.debug(var1("paneChild1",paneChild1))
+
+        elif buildSchematic[0][0]=="I":
+            currentAllSchematic[-1].append(buildSchematic[0])
+            paneChild1 = createInput(newPaneLayout, int(buildSchematic.pop(0)[1:]))
+            logger.debug(var1("buildSchematic becomes",buildSchematic))
+            currentAllSchematic[-1].append(paneChild1)
+            logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
+
+        elif buildSchematic[0][0]=="O":
+            currentAllSchematic[-1].append( buildSchematic.pop(0) )
+            paneChild1 = createOutput(newPaneLayout)
+            logger.debug(var1("buildSchematic becomes",buildSchematic))
+            currentAllSchematic[-1].append(paneChild1)
+            logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
+
+
+        logger.debug( var1("buildSchematic[0]",buildSchematic[0]))
+        if (buildSchematic[0][0]=="V") or (buildSchematic[0][0]=="H"):
+            paneChild2,buildSchematic = constructJSE( newPaneLayout, buildSchematic)
+            logger.debug(var1("buildSchematic becomes",buildSchematic))
+            logger.debug(var1("paneChild2",paneChild2))
+
+        elif buildSchematic[0][0]=="I":
+            currentAllSchematic[-1].append(buildSchematic[0])
+            paneChild2 = createInput(newPaneLayout, int(buildSchematic.pop(0)[1:]))
+            logger.debug(var1("buildSchematic becomes",buildSchematic))
+            currentAllSchematic[-1].append(paneChild2)
+            logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
+
+        elif buildSchematic[0][0]=="O":
+            currentAllSchematic[-1].append( buildSchematic.pop(0) )
+            paneChild2 = createOutput(newPaneLayout)
+            logger.debug(var1("buildSchematic becomes",buildSchematic))
+            currentAllSchematic[-1].append(paneChild2)
+            logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
+
+
+        logger.debug(var1("newPaneLayout",newPaneLayout) )
+        c.paneLayout(newPaneLayout, edit=True,
+                     paneSize=paneEditSize,
+                     setPane=[ (paneChild1 , 1),
+                               (paneChild2 , 2) ] )
+
+
+        logger.info(defEnd("Constructed current split"))
+        logger.info("")
+        return newPaneLayout,buildSchematic
+
+    logger.info(defStart("Constructing"))
     logger.debug(var1("paneSection",paneSection) )
     logger.debug(var1("buildSchematic",buildSchematic) )
     '''
@@ -120,81 +179,42 @@ def constructSplits( paneSection, buildSchematic ):
                                     snap it to the window's edges
 
     '''
-    logger.debug(head2("Popping out the first element as it HAS GOT TO BE a paneLayout config"))
+    logger.debug(head2("Popping out the first element"))
     paneCfg = buildSchematic.pop(0)
     logger.debug(var1("buildSchematic (popped)",buildSchematic) )
+    logger.debug(var1("paneCfg",paneCfg) )
+    
     currentAllSchematic[-1].append(paneCfg)
     logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
 
 
-    if paneCfg[0] == "V" :
-        paneCfgTxt = "vertical2"
-        paneEditSize = [1, int(paneCfg[1:]), 100]
-    elif paneCfg[0] == "H" :
-        paneCfgTxt = "horizontal2"
-        paneEditSize = [1, 100, int(paneCfg[1:])]
-    else:
-        logger.critical(head1("This paneCfg SHOULD be a paneLayout config!"))
-        logger.critical(var1("paneCfg",paneCfg))
-    logger.debug( var1("paneCfgTxt",paneCfgTxt))
-    logger.debug( var1("paneEditSize",paneEditSize))
+    if   paneCfg.startswith("V") : 
+        newPaneLayout,buildSchematic = constructSplits( "vertical2",   [1, int(paneCfg[1:]), 100] )
+        logger.info(defEnd("Constructed"))
+        logger.info("")
+        return newPaneLayout, buildSchematic
 
-    newPaneLayout = c.paneLayout(configuration=paneCfgTxt,parent=paneSection)
-    currentAllSchematic[-1].append(newPaneLayout)
-    logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
+    elif paneCfg.startswith("H") : 
+        newPaneLayout,buildSchematic = constructSplits( "horizontal2", [1, 100, int(paneCfg[1:])] )
+        logger.info(defEnd("Constructed"))
+        logger.info("")
+        return newPaneLayout, buildSchematic
 
-    logger.debug( var1("buildSchematic[0]",buildSchematic[0]))
-    if (buildSchematic[0][0]=="V") or (buildSchematic[0][0]=="H"):
-        paneChild1,buildSchematic = constructSplits( newPaneLayout, buildSchematic)
-        logger.debug(var1("buildSchematic becomes",buildSchematic))
-        logger.debug(var1("paneChild1",paneChild1))
+    elif paneCfg.startswith("O") : 
+        newPane = createOutput(paneSection)
+        currentAllSchematic[-1].append(newPane)
+        c.paneLayout(paneSection, edit=True, setPane=[ ( newPane, 1)] )
+        logger.info(defEnd("Constructed"))
+        logger.info("")
+        return paneSection, buildSchematic
 
-    elif buildSchematic[0][0]=="I":
-        currentAllSchematic[-1].append(buildSchematic[0])
-        paneChild1 = createInput(newPaneLayout, int(buildSchematic.pop(0)[1:]))
-        logger.debug(var1("buildSchematic becomes",buildSchematic))
-        currentAllSchematic[-1].append(paneChild1)
-        logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
-
-    elif buildSchematic[0][0]=="O":
-        currentAllSchematic[-1].append( buildSchematic.pop(0) )
-        paneChild1 = createOutput(newPaneLayout)
-        logger.debug(var1("buildSchematic becomes",buildSchematic))
-        currentAllSchematic[-1].append(paneChild1)
-        logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
-
-
-    logger.debug( var1("buildSchematic[0]",buildSchematic[0]))
-    if (buildSchematic[0][0]=="V") or (buildSchematic[0][0]=="H"):
-        paneChild2,buildSchematic = constructSplits( newPaneLayout, buildSchematic)
-        logger.debug(var1("buildSchematic becomes",buildSchematic))
-        logger.debug(var1("paneChild2",paneChild2))
-
-    elif buildSchematic[0][0]=="I":
-        currentAllSchematic[-1].append(buildSchematic[0])
-        paneChild2 = createInput(newPaneLayout, int(buildSchematic.pop(0)[1:]))
-        logger.debug(var1("buildSchematic becomes",buildSchematic))
-        currentAllSchematic[-1].append(paneChild2)
-        logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
-
-    elif buildSchematic[0][0]=="O":
-        currentAllSchematic[-1].append( buildSchematic.pop(0) )
-        paneChild2 = createOutput(newPaneLayout)
-        logger.debug(var1("buildSchematic becomes",buildSchematic))
-        currentAllSchematic[-1].append(paneChild2)
-        logger.debug(var1("currentAllSchematic[-1]",currentAllSchematic[-1]) )
-
-
-    logger.debug(var1("newPaneLayout",newPaneLayout) )
-    c.paneLayout(newPaneLayout, edit=True,
-                 paneSize=paneEditSize,
-                 setPane=[ (paneChild1 , 1),
-                           (paneChild2 , 2) ] )
-
-
-    logger.info(defEnd("Constructed current split"))
-    logger.info("")
-    return newPaneLayout,buildSchematic
+    elif paneCfg.startswith("I") : 
+        newPane = createInput(createInput)
+        currentAllSchematic[-1].append(newPane)
+        c.paneLayout(paneSection, edit=True, setPane=[ ( newPane , 1)] )
+        logger.info(defEnd("Constructed"))
+        logger.info("")
+        return paneSection, buildSchematic
 
 
 def split( paneSection, re_assign_position, newPaneIsInput):
@@ -240,6 +260,8 @@ def split( paneSection, re_assign_position, newPaneIsInput):
 
     window_IndicesInSchematic = ""
     pane_IndicesInSchematic = ""
+    try:    paneSection = c.control(paneSectionShortName, q=1, fullPathName=1)
+    except: paneSection = c.layout( paneSectionShortName, q=1, fullPathName=1)
     for i in xrange(len(currentAllSchematic)):
         for j in xrange(0, len(currentAllSchematic[i]), 2):
             if currentAllSchematic[i][j+1] == paneSection:
@@ -266,7 +288,7 @@ def split( paneSection, re_assign_position, newPaneIsInput):
 
         paneSectionNumber           :   pane index is the index of the child element + 1
     '''
-    paneSectionShortName = re.split("\|",paneSection)[-1] # strip the short name from the full name
+    # paneSectionShortName = re.split("\|",paneSection)[-1] # strip the short name from the full name
     paneSectionNumber = c.paneLayout( parentPaneLayout, query=True, ca=True).index(paneSectionShortName)+1
 
 
@@ -610,7 +632,7 @@ def createInput( parentUI, activeTabIndex=1 ):
     #=============================================================
 
     if len(currentInputTabType) != len(currentInputTabLabels):
-        logger.critical("You're fucked!, len(currentInputTabType) should euqal len(currentInputTabLabels)")
+        logger.critical("You're fucked!, len(currentInputTabType) should equal len(currentInputTabLabels)")
         logger.critical("   currentInputTabType (len,value)",len(currentInputTabType) ,  currentInputTabType)
         logger.critical(" currentInputTabLabels (len,value)",len(currentInputTabLabels), currentInputTabLabels)
         logger.critical("  currentInputTabFiles (len,value)",len(currentInputTabFiles),  currentInputTabFiles)
@@ -623,6 +645,7 @@ def createInput( parentUI, activeTabIndex=1 ):
             if currentInputTabType[i] == "python": fileExt = "py"
             else: fileExt = "mel"
 
+            logger.debug(var1( "currentInputTabFiles[i]",currentInputTabFiles[i]))
             if re.match(".*/commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]):
                 fileLocation = currentInputTabFiles[i]
             else:
@@ -777,7 +800,7 @@ def createPaneMenu( ctrl ):
     logger.debug("")
 
 
-####### Input Related #######
+################################################      InputRelated      ################################################
 
 def inputPaneMethods(ctrl, method):
     global OutputSnapshotsPath
@@ -934,7 +957,7 @@ def createInputMenu( ctrl ):
     logger.debug("")
 
 
-####### Expression Related #######
+################################################   ExpressionRelated    ################################################
 
 def attrInsert(cmdField, objSearchField, attrField):
     logger.debug(defStart("Inserting attribute to expression field"))
@@ -1051,7 +1074,7 @@ def createExpressionMenu( ctrl ):
     logger.debug("")
 
 
-####### Output Related #######
+################################################     OutputRelated      ################################################
 
 def outputPaneMethods(ctrl, method, *arg):
     global OutputSnapshotsPath
@@ -1099,7 +1122,7 @@ def createOutputMenu( ctrl ):
     logger.debug("")
 
 
-####### Script Editor Related #######
+################################################  Script EditorRelated  ################################################
 
 def scriptEditorMethods(ctrl, method, *arg):
     global OutputSnapshotsPath
@@ -1125,7 +1148,7 @@ def scriptEditorMethods(ctrl, method, *arg):
 
         logger.debug(head2("Executed script text") )
 
-    elif method[:4] == "save":
+    elif method.startswith("save"):
         logger.debug(head2("Saving script") )
         global currentInputTabFiles
         logger.debug( var1("currentInputTabFiles",currentInputTabFiles))
@@ -1148,18 +1171,34 @@ def scriptEditorMethods(ctrl, method, *arg):
         logger.debug( var1("(children)",c.layout(paneSection, q=1, childArray=1) ))
 
         #   1/ Navigate to pane parent tab
-        parentTabLayout = paneSection+"|"+c.layout(paneSection, q=1, childArray=1)[0]
-        logger.debug( var1("parentTabLayout",parentTabLayout))
-        logger.debug( var1("selectTabIndex",c.tabLayout(parentTabLayout,q=1, selectTabIndex=1) ))
+        parentTabLay = paneSection+"|"+c.layout(paneSection, q=1, childArray=1)[0]
+        logger.debug( var1("parentTabLay",parentTabLay))
+
+        parentTabLayChildArray = c.tabLayout(parentTabLay,q=1, childArray=1)
+        logger.debug( var2("childArray", parentTabLayChildArray ))
+        logger.debug( var2("(len)",len(parentTabLayChildArray) ))
+
+        parentTabLayLabelArray = c.tabLayout(parentTabLay,q=1, tabLabel=1)
+        logger.debug( var2("tabLabel", parentTabLayLabelArray ))
+        logger.debug( var2("(len)",len(parentTabLayLabelArray) ))
 
         #   2/ Find out which tab index
+        selectedTabIndex = c.tabLayout(parentTabLay,q=1, selectTabIndex=1)-1
+        logger.debug( var1("selectedTabIndex", selectedTabIndex))
+
         #   3/ Get Pane file location using tab index
-        tabFileLocation = currentInputTabFiles[ c.tabLayout(parentTabLayout,q=1, selectTabIndex=1)-1 ]
+        tabFileLocation = currentInputTabFiles[ c.tabLayout(parentTabLay,q=1, selectTabIndex=1)-1 ]
         logger.debug( var1("tabFileLocation",tabFileLocation))
 
         #   4/ Find out if method[5:]=="As"
-        logger.debug( var1("method[-2:]",method[-2:]))
+        logger.debug( var1("ends in As",method.endswith("As") ))
+        
         #   5/ Do the boolean table to find out whether save as or save
+        saveInputTabs()
+        if "All" in method:
+            logger.debug( head2("Save all"))
+            for i in xrange( len(parentTabLayChildArray) ):
+                pass
 
         # Save as
         #   1/ Navigate to pane parent tab
@@ -1201,11 +1240,14 @@ def createScriptEditorMenu( ctrl ):
                     command="JSE.scriptEditorMethods('"+ctrl+"','saveAs')" )
     c.menuItem(  label="Save All", radialPosition="N",
                     command="JSE.scriptEditorMethods('"+ctrl+"','saveAll')" )
+    c.menuItem(  optionBox=True, radialPosition="N",
+                    command="JSE.scriptEditorMethods('"+ctrl+"','saveAllAs')" )
     c.setParent("..",menu=1)
-
     logger.debug(defEnd("Created Script Editor Menu"))
     logger.debug("")
 
+
+################################################      Maintainance      ################################################
 
 def saveInputTabs(justBackup=False,tabIndex=0):
     global currentInputTabType
@@ -1316,7 +1358,7 @@ def wipeOptionVars():
                 message="JSE optionVars wiped! Reactor core highly unstable...\nCLOSE IT DOWN AND GET OUTTA THERE!")
 
 
-####### Debug Related #######
+################################################      DebugRelated      ################################################
 
 def createDebugMenu( ctrl ):
     logger.debug(defStart("Creating Debug Menu"))
@@ -1497,7 +1539,8 @@ def run(dockable, loggingLevel=logging.ERROR):
     # newPaneLayout = split( currentInputTabLayouts[-1] )
     refreshAllScematic()
     debugGlobals()
-    newPaneLayout = constructSplits(  c.paneLayout(), deepcopy(currentPaneScematic) )
+    constructJSE(  c.paneLayout(), deepcopy(currentPaneScematic) )
+    refreshAllScematic()
 
     # Re-populate
     # for i in xrange(0, len(currentAllSchematic[-1]), 2):
