@@ -1190,7 +1190,7 @@ def scriptEditorMethods(ctrl, method, *arg):
         logger.debug( var2("(len)",len(currentInputTabLabels) ))
 
         #   2/ Find out which tab index
-        selectedTabIndex = c.tabLayout(parentTabLay,q=1, selectTabIndex=1)-1
+        selectedTabIndex = c.tabLayout(parentTabLay,q=1, selectTabIndex=1)
         logger.debug( var1("selectedTabIndex", selectedTabIndex))
 
         #   3/ Get Pane file location using tab index
@@ -1206,45 +1206,12 @@ def scriptEditorMethods(ctrl, method, *arg):
         logger.debug( head2("Saving....") )
         if "All" in method:
             logger.debug( head2("Save all"))
-            for i in xrange( len(parentTabLayChildArray) ):
-                pass
+            if method.endswith("As"):   saveInputTabs(range( 1, len(parentTabLayChildArray)+1 ),parentTabLay,parentTabLayChildArray,True)
+            else:                       saveInputTabs(range( 1, len(parentTabLayChildArray)+1 ),parentTabLay,parentTabLayChildArray)
         else:
-            if method.endswith("As"):
-                #   1/ Navigate to pane parent tab (done)
-                #   2/ Get tab label
-                fileName_tabLabel = currentInputTabLabels[selectedTabIndex-1]
-
-                #   3/ Get tab language
-                tabCmdField = parentTabLayChildArray[selectedTabIndex-1]
-                rawTabLang = c.cmdScrollFieldExecuter( tabCmdField, q=1, sourceType=1)
-
-                if rawTabLang == "python":
-                    fileExt = ".py"
-                    selectedFileFilter = "Python"
-                else:
-                    fileExt = ".mel"
-                    selectedFileFilter = "MEL"
-
-                #   4/ File save dialog with label+language
-                allCode = c.cmdScrollFieldExecuter( tabCmdField, q=1, text=1)
-
-                multipleFilters = "Python (*.y);;MEL (*.mle);;All Files (*.*)"
-                returnedFile = c.fileDialog2(fileFilter=multipleFilters, dialogStyle=2)[0]
-                currentInputTabFiles[selectedTabIndex] = returnedFile
-
-                syncAll()
-
-
-            else:
-                saveInputTabs(selectedTabIndex)
-        logger.debug( head2("Saved") )
-
-
-        # Save
-        #   1/ Python open file
-        #   2/ Get tab contents
-        #   3/ Write to file
-        #   4/ Close file
+            logger.debug( head2("Save single"))
+            if method.endswith("As"):   saveInputTabs( [selectedTabIndex-1],parentTabLay,parentTabLayChildArray,True)
+            else:                       saveInputTabs( [selectedTabIndex-1],parentTabLay,parentTabLayChildArray)
 
 
 
@@ -1280,18 +1247,24 @@ def createScriptEditorMenu( ctrl ):
 
 ################################################      Maintainance      ################################################
 
-def saveInputTabs(tabIndex=0):
+def saveInputTabs(tabIndex=[],parentTabLay="",parentTabLayChildArray=[],saveAs=False):
     global currentInputTabType
     global currentInputTabLabels
     global currentInputTabFiles
     global currentInputTabs
     global InputBuffersPath
+    ''' tab index   0   : Save all
+                   >=1  : Save specific
 
-    logger.info(defStart("Saving All"))
+    '''
+
+    logger.info(defStart("Saving input tabs"))
 
     logger.debug(var1("InputBuffersPath",InputBuffersPath))
     logger.debug(var1("tabIndex",tabIndex))
-    debugGlobals()
+    logger.debug(var1("parentTabLayChildArray",parentTabLayChildArray))
+    logger.debug(var1("saveAs",saveAs))
+    #debugGlobals()
 
     """
     First clean up the currentInputTabs list so there is only 1 SET of active tabs
@@ -1319,17 +1292,18 @@ def saveInputTabs(tabIndex=0):
     Finally write the code in the current tabs to files
     """
     for i in range( len( currentInputTabType ) ):
+
+        logger.debug(var1("(for loop) i",i))
         """
         If it is the default maya script editor, don't bother "Save to File" as this
         situation only happens when we are hijacking Maya's settings and contents
         """
         if re.match(".*/commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]): currentInputTabFiles[i]=""
 
+        logger.debug(var1("(for loop) currentInputTabType[i]",currentInputTabType[i]))
         if currentInputTabType[i] != "expr":
-
             if currentInputTabType[i] == "python": fileExt = "py"
             else: fileExt = "mel"
-
             c.cmdScrollFieldExecuter(currentInputTabs[i], e=1,
                                      storeContents=InputBuffersPath+"JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt)
 
@@ -1338,42 +1312,70 @@ def saveInputTabs(tabIndex=0):
             """
             Do the same for actual file paths that the script may be opened from
             """
-            if not tabIndex and currentInputTabFiles[i] :
-                c.sysFile( currentInputTabFiles[i], delete=1)
-                c.cmdScrollFieldExecuter(currentInputTabs[i], e=1,
-                                         storeContents = currentInputTabFiles[i] )
-                print "Saved",currentInputTabFiles[i]
+            logger.debug(var1("not tabIndex",not tabIndex))
+            if (not tabIndex and currentInputTabFiles[i]):
+                try:
+                    c.sysFile( currentInputTabFiles[i], delete=1)
+                    c.cmdScrollFieldExecuter(currentInputTabs[i], e=1,
+                                             storeContents = currentInputTabFiles[i] )
+                except:
+                    returnedButton = c.confirmDialog(message="Cannot save to :"+currentInputTabFiles[i], button=["Choose new location...","Cannot be bothered"] )
+                    if returnedButton == "Cannot be bothered": currentInputTabFiles[i]=""
+                    else:
+                        print "----Need to save as----"
+                    print "Saved",currentInputTabFiles[i]
 
             if tabIndex:
-                #   1/ Navigate to pane parent tab (done)
-                #   2/ Get tab label
-                fileName_tabLabel = parentTabLayLabelArray[selectedTabIndex-1]
+                if tabIndex[0] == i and not saveAs and currentInputTabFiles[i]:
+                    tabToSaveIndex = tabIndex.pop(0)
+                    logger.debug(var1("(save) tabToSaveIndex",tabToSaveIndex))
+                    try:
+                        c.sysFile( currentInputTabFiles[i], delete=1 )
+                        c.cmdScrollFieldExecuter(currentInputTabs[i], e=1,
+                                                 storeContents = currentInputTabFiles[i] )
+                    except:
+                        returnedButton = c.confirmDialog(message="Cannot save to :"+currentInputTabFiles[i], button=["Choose new location...","Cannot be bothered"] )
+                        if returnedButton == "Cannot be bothered": currentInputTabFiles[i]=""
+                        else:
+                            print "----Need to save as----"
+                        print "Saved",currentInputTabFiles[i]
 
-                #   3/ Get tab language
-                tabCmdField = parentTabLayChildArray[selectedTabIndex-1]
-                rawTabLang = c.cmdScrollFieldExecuter( tabCmdField, q=1, sourceType=1)
+                if saveAs or (not currentInputTabFiles[i] and not saveAs):
+                    tabToSaveIndex = tabIndex.pop(0)
+                    logger.debug(var1("(save as) tabToSaveIndex",tabToSaveIndex))
+                    #   1/ Navigate to pane parent tab (done)
+                    #   2/ Get tab label
+                    tabLabel = currentInputTabLabels[tabToSaveIndex]
 
-                if rawTabLang == "python":
-                    fileExt = ".py"
-                    selectedFileFilter = "Python"
-                else:
-                    fileExt = ".mel"
-                    selectedFileFilter = "MEL"
+                    #   3/ Get tab language
+                    tabCmdField = parentTabLayChildArray[tabToSaveIndex]
+                    rawTabLang = c.cmdScrollFieldExecuter( tabCmdField, q=1, sourceType=1)
 
-                #   4/ File save dialog with label+language
-                allCode = c.cmdScrollFieldExecuter( tabCmdField, q=1, text=1)
+                    logger.debug(var1("fileExt",fileExt))
+                    if fileExt =="py":
+                        selectedFileFilter = "Python"
+                        fileFilter1 = "Python (*.py);;"
+                    else:
+                        selectedFileFilter = "MEL"
+                        fileFilter1 = "MEL (*.mel);;"
 
-                multipleFilters = "Python (*.y);;MEL (*.mle);;All Files (*.*)"
-                returnedFile = c.fileDialog2(fileFilter=multipleFilters, dialogStyle=2)[0]
-                currentInputTabFiles[selectedTabIndex] = returnedFile
-
-                syncAll()
+                    #   4/ File save dialog with label+language
+                    returnedFile = c.fileDialog2(fileFilter= fileFilter1+"All Files (*.*)",
+                                                 selectFileFilter=selectedFileFilter,
+                                                 startingDirectory="./"+tabLabel,
+                                                 dialogStyle=2)[0]
+                    if returnedFile:
+                        c.cmdScrollFieldExecuter( tabCmdField, e=1, storeContents=returnedFile )
+                        currentInputTabFiles[ tabToSaveIndex] = returnedFile
+                        currentInputTabLabels[tabToSaveIndex] = re.split("/",returnedFile)[-1]
+                        c.tabLayout( parentTabLay, e=1, tabLabel=[tabCmdField, re.split("/",returnedFile)[-1] ])
 
 
         # make sure the text is not selected
         c.cmdScrollFieldExecuter(currentInputTabs[i], e=1, select=[0,0] )
 
-    logger.info(defEnd("Saved All"))
+    syncAll()
+    logger.info(defEnd("Saved input tabs"))
     logger.info("")
 
 
@@ -1393,8 +1395,6 @@ def syncAll():
     global currentInputTabFiles
     global currentInputTabs
     global currentInputTabLayouts
-    global window
-    global layout
 
     for i in currentInputTabType :  c.optionVar(stringValueAppend=["JSE_input_tabLangs" ,i])
     for i in currentInputTabLabels: c.optionVar(stringValueAppend=["JSE_input_tabLabels",i])
@@ -1598,7 +1598,7 @@ def run(dockable, loggingLevel=logging.ERROR):
     saveInputTabs()
 
     if dockable:
-        c.dockControl("JSE",area='left',floating=True,content=window)
+        c.dockControl(area='left',floating=True,content=window)
         logger.info(head1("Dockable JSE created" ))
     else:
         c.showWindow(window)
