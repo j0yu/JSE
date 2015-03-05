@@ -386,27 +386,28 @@ def refreshAllScematic():
                 logger.debug(var1("schematicForDeletion",schematicForDeletion))
             else:
                 for j in xrange(0 , len(windowSchematic), 2):
-                    treeNode  = windowSchematic[j]
-                    logger.debug(var1("treeNode",treeNode))
-
                     treeNodeType  = windowSchematic[j][0]
                     logger.debug(var1("treeNodeType",treeNodeType))
 
-                    ctrlOrLay     = windowSchematic[j+1]
-                    logger.debug(var1("ctrlOrLay",ctrlOrLay))
+                    ctrlOrLayOnly = re.split("\|",windowSchematic[j+1])[-1]
+                    
+                    try:    ctrlOrLayNew = c.control(ctrlOrLayOnly, q=1, fullPathName=1)
+                    except: ctrlOrLayNew = c.layout( ctrlOrLayOnly, q=1, fullPathName=1)
+                    logger.debug(var1("ctrlOrLayNew",ctrlOrLayNew))
 
-
+                    windowSchematic[j+1] = ctrlOrLayNew
                     if treeNodeType == "V":
-                        windowSchematic[j] = treeNodeType+str(c.paneLayout( ctrlOrLay , q=1, paneSize=1)[0])
+                        windowSchematic[j] = treeNodeType+str(c.paneLayout( ctrlOrLayNew , q=1, paneSize=1)[0])
 
                     elif treeNodeType == "H":
-                        windowSchematic[j] = treeNodeType+str(c.paneLayout( ctrlOrLay , q=1, paneSize=1)[1])
+                        windowSchematic[j] = treeNodeType+str(c.paneLayout( ctrlOrLayNew , q=1, paneSize=1)[1])
 
                     elif treeNodeType == "I":
-                        childTabLay = c.layout(ctrlOrLay,q=1,childArray=1)[0]
+                        childTabLay = c.layout(ctrlOrLayNew,q=1,childArray=1)[0]
                         windowSchematic[j] = treeNodeType+str(c.tabLayout( childTabLay , q=1, selectTabIndex=1) )
 
-                    logger.debug(var1("windowSchematic[i]",windowSchematic[i]))
+
+
 
 
         logger.debug( head2("Deleting schematics marked for deletion") )
@@ -446,6 +447,7 @@ def attrInsert(cmdField, objSearchField, attrField):
 
 
 def deletePane(paneSection):
+    global currentAllSchematic
     '''
     This procedure removes the pane specified in the parameter, effectively
     re-merging the other pane in the shared pane layout to the pane layout
@@ -460,6 +462,7 @@ def deletePane(paneSection):
     '''
     logger.info(defStart("Deleting Pane"))
     logger.debug(var1("paneSection",paneSection))
+    logger.debug(var1("currentAllSchematic",currentAllSchematic))
 
     ''' --- FIRST ---
             Find the paneLayout above the current control/layout.
@@ -481,12 +484,22 @@ def deletePane(paneSection):
             are, as well as the grand parent layout. Can't forget about the grannies
 
     '''
+    logger.debug(var1(     "paneSection",paneSection))
+    logger.debug(var1(     "parentPaneLayout",parentPaneLayout))
 
     parentPaneLayoutChildren        = c.paneLayout( parentPaneLayout, query=True, childArray=True)
     logger.debug(var1(     "parentPaneLayoutChildren",parentPaneLayoutChildren))
 
     grandParentPaneLayout           = c.paneLayout( parentPaneLayout, query=True, parent=True)
     logger.debug(var1(        "grandParentPaneLayout",grandParentPaneLayout))
+    logger.debug(var1(        "objectTypeUI",c.objectTypeUI(grandParentPaneLayout)))
+    
+    if "indow" in c.objectTypeUI(grandParentPaneLayout):
+        c.deleteUI(grandParentPaneLayout)
+        logger.info(head2("Grand Parent is a window, closing window") )
+        logger.info(defEnd("Deleted Pane") )
+        logger.info("")
+        return
 
     grandParentPaneLayoutChildren   = c.paneLayout( grandParentPaneLayout, query=True, childArray=True)
     logger.debug(var1("grandParentPaneLayoutChildren",grandParentPaneLayoutChildren))
@@ -511,8 +524,11 @@ def deletePane(paneSection):
     pane_IndicesInSchematic = ""
     surv__IndicesInSchematic = ""
     for i in xrange(len(currentAllSchematic)):
+        logger.debug(var1("Looking for", parentPaneLayout+"|"+parentPaneLayoutChildren[otherPaneChildNum]  ))   
         for j in xrange(0, len(currentAllSchematic[i]), 2):
+            logger.debug(var1("currentAllSchematic[i][j+1]", currentAllSchematic[i][j+1]  ))
             logger.debug(var1("Match?", (currentAllSchematic[i][j+1] == parentPaneLayout+"|"+parentPaneLayoutChildren[otherPaneChildNum])  ))
+            logger.debug(var1("Match2?", currentAllSchematic[i][j+1].endswith(parentPaneLayoutChildren[otherPaneChildNum])   ))
             if currentAllSchematic[i][j+1] == parentPaneLayout:
                 window_IndicesInSchematic = i
                 pane_IndicesInSchematic = j
