@@ -1133,9 +1133,12 @@ def scriptEditorMethods(ctrl, method, *arg):
     global OutputSnapshotsPath
     global currentInputTabLabels
     global currentInputTabType
+    global currentInputTabs
     logger.debug(defStart("Script editor method processing"))
     logger.debug(var1("ctrl",ctrl))
     logger.debug(var1("method",method))
+    paneSection,parentPaneLayout = navigateToParentPaneLayout(ctrl) 
+    logger.debug( var1("paneSection",paneSection))
 
     if method == "run":
         logger.debug(head2("Executing script text"))
@@ -1173,10 +1176,6 @@ def scriptEditorMethods(ctrl, method, *arg):
         ------------------------------|-----------------|---------------------------
                     No                |       No        |   Save to new file
         '''
-        paneSection,parentPaneLayout = navigateToParentPaneLayout(ctrl)
-        logger.debug( var1("paneSection",paneSection))
-        logger.debug( var1("(children)",c.layout(paneSection, q=1, childArray=1) ))
-
         #   1/ Navigate to pane parent tab
         parentTabLay = paneSection+"|"+c.layout(paneSection, q=1, childArray=1)[0]
         logger.debug( var1("parentTabLay",parentTabLay))
@@ -1185,17 +1184,17 @@ def scriptEditorMethods(ctrl, method, *arg):
         logger.debug( var2("childArray", parentTabLayChildArray ))
         logger.debug( var2("(len)",len(parentTabLayChildArray) ))
 
-        currentInputTabLabels = c.tabLayout(parentTabLay,q=1, tabLabel=1)
-        logger.debug( var2("tabLabel", currentInputTabLabels ))
-        logger.debug( var2("(len)",len(currentInputTabLabels) ))
+        # currentInputTabLabels = c.tabLayout(parentTabLay,q=1, tabLabel=1)
+        # logger.debug( var2("tabLabel", currentInputTabLabels ))
+        # logger.debug( var2("(len)",len(currentInputTabLabels) ))
 
         #   2/ Find out which tab index
         selectedTabIndex = c.tabLayout(parentTabLay,q=1, selectTabIndex=1)
         logger.debug( var1("selectedTabIndex", selectedTabIndex))
 
         #   3/ Get Pane file location using tab index
-        tabFileLocation = currentInputTabFiles[ c.tabLayout(parentTabLay,q=1, selectTabIndex=1)-1 ]
-        logger.debug( var1("tabFileLocation",tabFileLocation))
+        # tabFileLocation = currentInputTabFiles[ c.tabLayout(parentTabLay,q=1, selectTabIndex=1)-1 ]
+        # logger.debug( var1("tabFileLocation",tabFileLocation))
 
         #   4/ Find out if method[5:]=="As"
         logger.debug( var1("ends in As",method.endswith("As") ))
@@ -1217,6 +1216,50 @@ def scriptEditorMethods(ctrl, method, *arg):
 
 
         logger.debug(head2("Saved script") )
+
+    if method == "open":
+        logger.debug(head2("Opening script") )
+        retrievedFile = c.fileDialog2()
+        
+        logger.debug(head2("Opened script") )
+
+
+    logger.debug(defEnd("Script editor method processed"))
+    logger.debug("")
+
+    if method == "load":
+        logger.debug(head2("Loading script") )
+        parentTabLay = paneSection+"|"+c.layout(paneSection, q=1, childArray=1)[0]
+        parentTabLayChildArray = c.tabLayout(parentTabLay,q=1, childArray=1)
+        selectedTabIndex = c.tabLayout(parentTabLay,q=1, selectTabIndex=1)
+        
+        cmdFieldShort    = parentTabLayChildArray[selectedTabIndex-1]
+        currentInputTabs[selectedTabIndex-1] = c.cmdScrollFieldExecuter(cmdFieldShort,q=1,fullPathName=1)
+        tabCmdField      = currentInputTabs[selectedTabIndex-1]
+
+        
+        logger.debug( var1("cmdFieldShort",cmdFieldShort))
+        logger.debug( var2("fullPathName",c.cmdScrollFieldExecuter(cmdFieldShort,q=1,fullPathName=1)) )
+        logger.debug( var2("currentInputTabs",currentInputTabs[selectedTabIndex-1] ) )
+        logger.debug( var1("tabCmdField",tabCmdField))
+
+
+
+
+        # retrievedFile = c.fileDialog2(fileMode=1, )
+        # if fileExt =="py":
+        #     selectedFileFilter = "Python"
+        #     fileFilter1 = "Python (*.py);;"
+        # else:
+        #     selectedFileFilter = "MEL"
+        #     fileFilter1 = "MEL (*.mel);;"
+
+        # #   4/ File save dialog with label+language
+        # returnedFile = c.fileDialog2(fileFilter= fileFilter1+"All Files (*.*)",
+        #                              selectFileFilter=selectedFileFilter,
+        #                              startingDirectory="./"+tabLabel,
+        #                              dialogStyle=2)
+        logger.debug(head2("Loaded script") )
 
 
     logger.debug(defEnd("Script editor method processed"))
@@ -1241,6 +1284,8 @@ def createScriptEditorMenu( ctrl ):
     c.menuItem(  optionBox=True, radialPosition="N",
                     command="JSE.scriptEditorMethods('"+ctrl+"','saveAllAs')" )
     c.setParent("..",menu=1)
+    c.menuItem(  label="Load", radialPosition="W",
+                    command="JSE.scriptEditorMethods('"+ctrl+"','load')" )
     logger.debug(defEnd("Created Script Editor Menu"))
     logger.debug("")
 
@@ -1321,24 +1366,24 @@ def saveInputTabs(tabIndex=[],parentTabLay="",parentTabLayChildArray=[],saveAs=F
                 except:
                     returnedButton = c.confirmDialog(message="Cannot save to :"+currentInputTabFiles[i], button=["Choose new location...","Cannot be bothered"] )
                     if returnedButton == "Cannot be bothered": currentInputTabFiles[i]=""
-                    else:
-                        print "----Need to save as----"
+                    else:    
+                        tabIndex = [i]
+                        saveAs = True
                     print "Saved",currentInputTabFiles[i]
 
             if tabIndex:
                 if tabIndex[0] == i and not saveAs and currentInputTabFiles[i]:
-                    tabToSaveIndex = tabIndex.pop(0)
-                    logger.debug(var1("(save) tabToSaveIndex",tabToSaveIndex))
+                    logger.debug(var1("(save) tabToSaveIndex",tabIndex[0]))
                     try:
                         c.sysFile( currentInputTabFiles[i], delete=1 )
                         c.cmdScrollFieldExecuter(currentInputTabs[i], e=1,
                                                  storeContents = currentInputTabFiles[i] )
+                        tabIndex.pop(0)
+                        print "Saved",currentInputTabFiles[i]
                     except:
                         returnedButton = c.confirmDialog(message="Cannot save to :"+currentInputTabFiles[i], button=["Choose new location...","Cannot be bothered"] )
                         if returnedButton == "Cannot be bothered": currentInputTabFiles[i]=""
-                        else:
-                            print "----Need to save as----"
-                        print "Saved",currentInputTabFiles[i]
+                        else:      saveAs = True
 
                 if saveAs or (not currentInputTabFiles[i] and not saveAs):
                     tabToSaveIndex = tabIndex.pop(0)
