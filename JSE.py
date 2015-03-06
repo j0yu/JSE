@@ -1217,49 +1217,49 @@ def scriptEditorMethods(ctrl, method, *arg):
 
         logger.debug(head2("Saved script") )
 
+
+
     if method == "open":
-        logger.debug(head2("Opening script") )
-        retrievedFile = c.fileDialog2()
-        
-        logger.debug(head2("Opened script") )
-
-
-    logger.debug(defEnd("Script editor method processed"))
-    logger.debug("")
-
-    if method == "load":
         logger.debug(head2("Loading script") )
         parentTabLay = paneSection+"|"+c.layout(paneSection, q=1, childArray=1)[0]
         parentTabLayChildArray = c.tabLayout(parentTabLay,q=1, childArray=1)
         selectedTabIndex = c.tabLayout(parentTabLay,q=1, selectTabIndex=1)
         
         cmdFieldShort    = parentTabLayChildArray[selectedTabIndex-1]
-        currentInputTabs[selectedTabIndex-1] = c.cmdScrollFieldExecuter(cmdFieldShort,q=1,fullPathName=1)
-        tabCmdField      = currentInputTabs[selectedTabIndex-1]
-
+        currentInputTabs[   selectedTabIndex-1] = c.cmdScrollFieldExecuter(cmdFieldShort,q=1,fullPathName=1)
+        currentInputTabType[selectedTabIndex-1] = c.cmdScrollFieldExecuter(cmdFieldShort,q=1,sourceType=1)
+        
+        tabCmdField      = currentInputTabs[   selectedTabIndex-1]
+        tabSourceType    = currentInputTabType[selectedTabIndex-1]
         
         logger.debug( var1("cmdFieldShort",cmdFieldShort))
-        logger.debug( var2("fullPathName",c.cmdScrollFieldExecuter(cmdFieldShort,q=1,fullPathName=1)) )
-        logger.debug( var2("currentInputTabs",currentInputTabs[selectedTabIndex-1] ) )
         logger.debug( var1("tabCmdField",tabCmdField))
 
 
+        if currentInputTabType[selectedTabIndex-1] =="python":
+            selectedFileFilter = "Python"
+            fileFilter1 = "Python (*.py);;"
+        else:
+            selectedFileFilter = "MEL"
+            fileFilter1 = "MEL (*.mel);;"
 
 
-        # retrievedFile = c.fileDialog2(fileMode=1, )
-        # if fileExt =="py":
-        #     selectedFileFilter = "Python"
-        #     fileFilter1 = "Python (*.py);;"
-        # else:
-        #     selectedFileFilter = "MEL"
-        #     fileFilter1 = "MEL (*.mel);;"
+        retrievedFile = c.fileDialog2(fileMode=1,
+                                      fileFilter= fileFilter1+"All Files (*.*)",
+                                      selectFileFilter=selectedFileFilter,
+                                      startingDirectory="./",
+                                      dialogStyle=2)
+        if retrievedFile:
+            if method.endswith("ToNewTab"):
+                logger.debug( head2("Need to open to new tab"))
+            else:
+                with open(retrievedFile,"r") as bufferFile:
+                    c.cmdScrollFieldExecuter(currentInputTabs[selectedTabIndex-1], e=1, text=bufferFile.read() )
+                currentInputTabFiles[ selectedTabIndex-1] = retrievedFile
+                currentInputTabLabels[selectedTabIndex-1] = retrievedFile.rsplit("/",1)[-1]
+                c.tabLayout( parentTabLay, e=1, tabLabel=[tabCmdField, retrievedFile.rsplit("/",1)[-1] ])
 
-        # #   4/ File save dialog with label+language
-        # returnedFile = c.fileDialog2(fileFilter= fileFilter1+"All Files (*.*)",
-        #                              selectFileFilter=selectedFileFilter,
-        #                              startingDirectory="./"+tabLabel,
-        #                              dialogStyle=2)
-        logger.debug(head2("Loaded script") )
+            logger.debug(head2("Loaded script") )
 
 
     logger.debug(defEnd("Script editor method processed"))
@@ -1284,8 +1284,8 @@ def createScriptEditorMenu( ctrl ):
     c.menuItem(  optionBox=True, radialPosition="N",
                     command="JSE.scriptEditorMethods('"+ctrl+"','saveAllAs')" )
     c.setParent("..",menu=1)
-    c.menuItem(  label="Load", radialPosition="W",
-                    command="JSE.scriptEditorMethods('"+ctrl+"','load')" )
+    c.menuItem(  label="Open File", radialPosition="W",
+                    command="JSE.scriptEditorMethods('"+ctrl+"','open')" )
     logger.debug(defEnd("Created Script Editor Menu"))
     logger.debug("")
 
@@ -1441,6 +1441,9 @@ def syncAll():
     global currentInputTabs
     global currentInputTabLayouts
 
+    c.optionVar(clearArray="JSE_input_tabLangs")
+    c.optionVar(clearArray="JSE_input_tabLabels")
+    c.optionVar(clearArray="JSE_input_tabFiles")
     for i in currentInputTabType :  c.optionVar(stringValueAppend=["JSE_input_tabLangs" ,i])
     for i in currentInputTabLabels: c.optionVar(stringValueAppend=["JSE_input_tabLabels",i])
     for i in currentInputTabFiles : c.optionVar(stringValueAppend=["JSE_input_tabFiles" ,i])
