@@ -722,8 +722,8 @@ def refreshAllScematic():
             fullPathSplit = windowSchematic[1].split("|")
             logger.debug(var1("fullPathSplit",fullPathSplit))
 
-            if not c.window( fullPathSplit[0], q=1, exists=1):
-                logger.debug( head1("Schematic window doesn't exist"))
+            if not c.layout( fullPathSplit[1], q=1, exists=1):
+                logger.debug( head1("Schematic primary paneLayout doesn't exist"))
                 schematicForDeletion.append( i )
                 logger.debug(var1("schematicForDeletion",schematicForDeletion))
             else:
