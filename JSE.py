@@ -564,9 +564,7 @@ def createInput( parentUI, activeTabIndex=1 ):
         # (YES)
         logger.info("Previous JSE existed, loading previous setting from optionVars")
 
-        currentInputTabType   = c.optionVar(q="JSE_input_tabLangs") # Get list of tabs' languages
-        currentInputTabLabels = c.optionVar(q="JSE_input_tabLabels")# Get list of tabs' label/names
-        currentInputTabFiles  = c.optionVar(q="JSE_input_tabFiles") # Get list of tabs' associated file addressess
+        syncGlobals("retrieve")
 
     else: # (NO)
         logger.info("No previous JSE optionVars found, must be fresh run of JSE eh?!")
@@ -1419,7 +1417,7 @@ def saveInputTabs(tabIndex=[],parentTabLay="",parentTabLayChildArray=[],saveAs=F
         # make sure the text is not selected
         c.cmdScrollFieldExecuter(currentInputTabs[i], e=1, select=[0,0] )
 
-    syncAll()
+    syncGlobals("store")
     logger.info(defEnd("Saved input tabs"))
     logger.info("")
 
@@ -1434,19 +1432,25 @@ def saveCurrentSettings():
     for i in currentInputTabFiles:  c.optionVar( stringValueAppend=("JSE_input_tabFiles",i) )
 
 
-def syncAll():
+def syncGlobals(direction):
     global currentInputTabType
     global currentInputTabLabels
     global currentInputTabFiles
     global currentInputTabs
     global currentInputTabLayouts
 
-    c.optionVar(clearArray="JSE_input_tabLangs")
-    c.optionVar(clearArray="JSE_input_tabLabels")
-    c.optionVar(clearArray="JSE_input_tabFiles")
-    for i in currentInputTabType :  c.optionVar(stringValueAppend=["JSE_input_tabLangs" ,i])
-    for i in currentInputTabLabels: c.optionVar(stringValueAppend=["JSE_input_tabLabels",i])
-    for i in currentInputTabFiles : c.optionVar(stringValueAppend=["JSE_input_tabFiles" ,i])
+    if direction=="store":
+        c.optionVar(clearArray="JSE_input_tabLangs")
+        c.optionVar(clearArray="JSE_input_tabLabels")
+        c.optionVar(clearArray="JSE_input_tabFiles")
+        for i in currentInputTabType :  c.optionVar(stringValueAppend=["JSE_input_tabLangs" ,i])
+        for i in currentInputTabLabels: c.optionVar(stringValueAppend=["JSE_input_tabLabels",i])
+        for i in currentInputTabFiles : c.optionVar(stringValueAppend=["JSE_input_tabFiles" ,i])
+    
+    elif direction=="retrieve":
+        currentInputTabType   = c.optionVar(q="JSE_input_tabLangs") # Get list of tabs' languages
+        currentInputTabLabels = c.optionVar(q="JSE_input_tabLabels")# Get list of tabs' label/names
+        currentInputTabFiles  = c.optionVar(q="JSE_input_tabFiles") # Get list of tabs' associated file addressess
 
 
 def wipeOptionVars():
