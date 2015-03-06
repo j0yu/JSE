@@ -1,5 +1,5 @@
 import maya.cmds as c
-import re
+from re import match
 from maya.mel import eval as melEval
 from copy import deepcopy
 
@@ -249,7 +249,7 @@ def split( paneSection, re_assign_position, newPaneIsInput):
     '''
     paneSection,parentPaneLayout = navigateToParentPaneLayout(paneSection)
 
-    paneSectionShortName = re.split("\\|",paneSection)[-1]
+    paneSectionShortName = paneSection.rsplit("|",1)[-1]
     logger.debug(var1(              "(shortName)",paneSectionShortName ) )
 
     parentPaneLayoutChildArray = c.paneLayout( parentPaneLayout, query=True, ca=True)
@@ -289,7 +289,7 @@ def split( paneSection, re_assign_position, newPaneIsInput):
 
         paneSectionNumber           :   pane index is the index of the child element + 1
     '''
-    # paneSectionShortName = re.split("\|",paneSection)[-1] # strip the short name from the full name
+    # paneSectionShortName = paneSection.rsplit("|",1)[-1] # strip the short name from the full name
     paneSectionNumber = c.paneLayout( parentPaneLayout, query=True, ca=True).index(paneSectionShortName)+1
 
 
@@ -446,10 +446,10 @@ def deletePane(paneSection):
     grandParentPaneLayoutChildren   = c.paneLayout( grandParentPaneLayout, query=True, childArray=True)
     logger.debug(var1("grandParentPaneLayoutChildren",grandParentPaneLayoutChildren))
 
-    paneSectionShortName        = re.split("\|",paneSection)[-1] # strip the short name from the full name
+    paneSectionShortName        = paneSection.rsplit("|",1)[-1] # strip the short name from the full name
     logger.debug(var1(         "paneSectionShortName",paneSectionShortName))
 
-    parentPaneLayoutShortName   = re.split("\|",parentPaneLayout)[-1] # strip the short name from the full name
+    parentPaneLayoutShortName   = parentPaneLayout.rsplit("|",1)[-1] # strip the short name from the full name
     logger.debug(var1(    "parentPaneLayoutShortName",parentPaneLayoutShortName))
 
 
@@ -648,7 +648,7 @@ def createInput( parentUI, activeTabIndex=1 ):
             else: fileExt = "mel"
 
             logger.debug(var1( "currentInputTabFiles[i]",currentInputTabFiles[i]))
-            if re.match(".*/commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]):
+            if match(".*/commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]):
                 fileLocation = currentInputTabFiles[i]
                 currentInputTabFiles[i] = ""
                 logger.debug(var1("new currentInputTabFiles[i]",currentInputTabFiles[i]))
@@ -721,7 +721,7 @@ def refreshAllScematic():
             windowSchematic = currentAllSchematic[i]
             logger.debug(var1("windowSchematic",windowSchematic))
 
-            fullPathSplit = re.split("\|", windowSchematic[1])
+            fullPathSplit = windowSchematic[1].split("|")
             logger.debug(var1("fullPathSplit",fullPathSplit))
 
             if not c.window( fullPathSplit[0], q=1, exists=1):
@@ -733,7 +733,7 @@ def refreshAllScematic():
                     treeNodeType  = windowSchematic[j][0]
                     logger.debug(var1("treeNodeType",treeNodeType))
 
-                    ctrlOrLayOnly = re.split("\|",windowSchematic[j+1])[-1]
+                    ctrlOrLayOnly = windowSchematic[j+1].rsplit("|",1)[-1]
 
                     try:    ctrlOrLayNew = c.control(ctrlOrLayOnly, q=1, fullPathName=1)
                     except: ctrlOrLayNew = c.layout( ctrlOrLayOnly, q=1, fullPathName=1)
@@ -971,7 +971,7 @@ def attrInsert(cmdField, objSearchField, attrField):
     logger.debug(var1(     "attrField",attrField))
 
     logger.debug(head2("Get selected attributes and combine with object string"))
-    attrText = re.split(" ",c.textScrollList(attrField, q=1, selectItem=1)[0])[0]
+    attrText = c.textScrollList(attrField, q=1, selectItem=1)[0].split(" ")[0]
     objText  = c.textFieldGrp(objSearchField, q=1, text=1)
     logger.debug( var1("attrText",attrText))
     logger.debug( var1( "objText",objText))
@@ -1030,7 +1030,7 @@ def updateExpr(exprPanelayout):
     exprText      = c.cmdScrollFieldExecuter( cmdField, q=1, text=1)
 
     logger.debug(head2("Get tab name for expression name"))
-    tabChildShort = re.split("\|",exprPanelayout)[-1]
+    tabChildShort = exprPanelayout.rsplit("|",1)[-1]
     logger.debug(var1( "tabChildShort", tabChildShort))
     logger.debug(var1("exprPanelayout", exprPanelayout))
     logger.debug(var1(      "(parent)", c.layout( exprPanelayout, q=1,parent=1)))
@@ -1343,7 +1343,7 @@ def saveInputTabs(tabIndex=[],parentTabLay="",parentTabLayChildArray=[],saveAs=F
         If it is the default maya script editor, don't bother "Save to File" as this
         situation only happens when we are hijacking Maya's settings and contents
         """
-        if re.match(".*/commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]): currentInputTabFiles[i]=""
+        if match(".*/commandExecuter(-[0-9]+)?$",currentInputTabFiles[i]): currentInputTabFiles[i]=""
 
         logger.debug(var1("(for loop) currentInputTabType[i]",currentInputTabType[i]))
         if currentInputTabType[i] != "expr":
@@ -1412,8 +1412,8 @@ def saveInputTabs(tabIndex=[],parentTabLay="",parentTabLayChildArray=[],saveAs=F
                     if returnedFile:
                         c.cmdScrollFieldExecuter( tabCmdField, e=1, storeContents=returnedFile )
                         currentInputTabFiles[ tabToSaveIndex] = returnedFile
-                        currentInputTabLabels[tabToSaveIndex] = re.split("/",returnedFile)[-1]
-                        c.tabLayout( parentTabLay, e=1, tabLabel=[tabCmdField, re.split("/",returnedFile)[-1] ])
+                        currentInputTabLabels[tabToSaveIndex] = returnedFile.rsplit("/",1)[-1]
+                        c.tabLayout( parentTabLay, e=1, tabLabel=[tabCmdField, returnedFile.rsplit("/",1)[-1] ])
 
 
         # make sure the text is not selected
