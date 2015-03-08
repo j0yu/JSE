@@ -15,7 +15,6 @@ Installation
 - Windows: `C:\Users\YourUserName\Documents\maya\scripts`
 - Mac OS X: `~/Library/Preferences/Autodesk/maya/scripts`
 - Linux: `~/maya/scripts` 
-
    (where `~` is your home directory/folder)
  
 or wherever you Maya scripts folder may be
