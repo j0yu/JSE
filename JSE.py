@@ -1676,7 +1676,7 @@ def run(dockable=False, loggingLevel=logging.INFO):
     else:
         c.showWindow(window)
         logger.info(head1("Standard JSE created" ))
-    logger.info("")
+    logger.debug("")
 
 
 
