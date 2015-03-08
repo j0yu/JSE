@@ -10,11 +10,13 @@ Installation
 
 1. Download as zip (to the right! :arrow_right:)
 
-2. Extract `JSE.py` from the downloaded zip and place into the folder:
+2. Extract `JSE.py` from the downloaded zip and place into the folder (typically):
 
-- Windows: Documents\maya\scripts
-- Mac OS X: ~/Library/Preferences/Autodesk/maya/scripts
-- Windows: ~/maya/scripts
+- Windows: `C:\Users\YourUserName\Documents\maya\scripts`
+- Mac OS X: `~/Library/Preferences/Autodesk/maya/scripts`
+- Linux: `~/maya/scripts` 
+
+   (where `~` is your home directory/folder)
  
 or wherever you Maya scripts folder may be
 
