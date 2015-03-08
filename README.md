@@ -25,7 +25,7 @@ Launching it (Simple)
 ===
 
 3. Open Maya
-4. Run (in Python)
+4. Run in Maya script editor (in Python)
 ```python
 import JSE
 JSE.run()
