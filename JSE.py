@@ -75,13 +75,13 @@ def navigateToParentPaneLayout(paneSection):
     (returned)              called the split, initially initialised to paneSection
                             in order to start the parent traversal algorithm
     """
-    logger.info(defStart("Navigating to parent paneLayout"))
+    logger.debug(defStart("Navigating to parent paneLayout"))
     logger.debug(var1("paneSection",paneSection))
 
     try: parentPaneLayout = c.control(paneSection, query=True, parent=True)
     except: parentPaneLayout = c.layout(paneSection, query=True, parent=True)
     logger.debug(var1(        "parentPaneLayout",parentPaneLayout))
-    logger.info(head1("Traversing to get parent paneLayout"))
+    logger.debug(head1("Traversing to get parent paneLayout"))
     while not( c.paneLayout( parentPaneLayout, query=True, exists=True) ):
         paneSection = parentPaneLayout
         logger.debug(var1(        "parentPaneLayout",parentPaneLayout))
@@ -95,7 +95,7 @@ def navigateToParentPaneLayout(paneSection):
     logger.debug(var1(   "child is (paneSection)",paneSection))
     logger.debug(var1(                 "(exist?)",c.control(paneSection,q=1,ex=1)) )
 
-    logger.info(defEnd("Navigated to parent paneLayout"))
+    logger.debug(defEnd("Navigated to parent paneLayout"))
     return paneSection,parentPaneLayout
 
 
@@ -165,11 +165,11 @@ def constructJSE( paneSection, buildSchematic ):
                                (paneChild2 , 2) ] )
 
 
-        logger.info(defEnd("Constructed current split"))
-        logger.info("")
+        logger.debug(defEnd("Constructed current split"))
+        logger.debug("")
         return newPaneLayout,buildSchematic
 
-    logger.info(defStart("Constructing"))
+    logger.debug(defStart("Constructing"))
     logger.debug(var1("paneSection",paneSection) )
     logger.debug(var1("buildSchematic",buildSchematic) )
     '''
@@ -191,30 +191,30 @@ def constructJSE( paneSection, buildSchematic ):
 
     if   paneCfg.startswith("V") :
         newPaneLayout,buildSchematic = constructSplits( "vertical2",   [1, int(paneCfg[1:]), 100] )
-        logger.info(defEnd("Constructed"))
-        logger.info("")
+        logger.debug(defEnd("Constructed"))
+        logger.debug("")
         return newPaneLayout, buildSchematic
 
     elif paneCfg.startswith("H") :
         newPaneLayout,buildSchematic = constructSplits( "horizontal2", [1, 100, int(paneCfg[1:])] )
-        logger.info(defEnd("Constructed"))
-        logger.info("")
+        logger.debug(defEnd("Constructed"))
+        logger.debug("")
         return newPaneLayout, buildSchematic
 
     elif paneCfg.startswith("O") :
         newPane = createOutput(paneSection)
         currentAllSchematic[-1].append(newPane)
         c.paneLayout(paneSection, edit=True, setPane=[ ( newPane, 1)] )
-        logger.info(defEnd("Constructed"))
-        logger.info("")
+        logger.debug(defEnd("Constructed"))
+        logger.debug("")
         return paneSection, buildSchematic
 
     elif paneCfg.startswith("I") :
         newPane = createInput(createInput)
         currentAllSchematic[-1].append(newPane)
         c.paneLayout(paneSection, edit=True, setPane=[ ( newPane , 1)] )
-        logger.info(defEnd("Constructed"))
-        logger.info("")
+        logger.debug(defEnd("Constructed"))
+        logger.debug("")
         return paneSection, buildSchematic
 
 
@@ -231,7 +231,7 @@ def split( paneSection, re_assign_position, newPaneIsInput):
     global currentInputTabLayouts
     global currentAllSchematic
 
-    logger.info(defStart("Splitting"))
+    logger.debug(defStart("Splitting"))
     logger.debug(var1("paneSection",paneSection) )
     logger.debug(var1("re_assign_position",re_assign_position) )
 
@@ -384,8 +384,8 @@ def split( paneSection, re_assign_position, newPaneIsInput):
     currentAllSchematic[window_IndicesInSchematic] = deepcopy(newSchematic)
     refreshAllScematic()
 
-    logger.info(defEnd("Splitted"))
-    logger.info("")
+    logger.debug(defEnd("Splitted"))
+    logger.debug("")
 
 
 def deletePane(paneSection):
@@ -402,7 +402,7 @@ def deletePane(paneSection):
     5 --- Re-parent other section --> grand parent layout, same section number as parent layout
     6 --- Delete parent layout, which also deletes the current section (parent layout's child)
     '''
-    logger.info(defStart("Deleting Pane"))
+    logger.debug(defStart("Deleting Pane"))
     logger.debug(var1("paneSection",paneSection))
     logger.debug(var1("currentAllSchematic",currentAllSchematic))
 
@@ -438,9 +438,9 @@ def deletePane(paneSection):
 
     if "indow" in c.objectTypeUI(grandParentPaneLayout):
         c.deleteUI(grandParentPaneLayout)
-        logger.info(head2("Grand Parent is a window, closing window") )
-        logger.info(defEnd("Deleted Pane") )
-        logger.info("")
+        logger.debug(head2("Grand Parent is a window, closing window") )
+        logger.debug(defEnd("Deleted Pane") )
+        logger.debug("")
         return
 
     grandParentPaneLayoutChildren   = c.paneLayout( grandParentPaneLayout, query=True, childArray=True)
@@ -508,8 +508,8 @@ def deletePane(paneSection):
     currentAllSchematic[window_IndicesInSchematic] = deepcopy(newSchematic)
     refreshAllScematic()
 
-    logger.info(defEnd("Deleted Pane") )
-    logger.info("")
+    logger.debug(defEnd("Deleted Pane") )
+    logger.debug("")
 
 
 def setPane( paneType ):
@@ -522,7 +522,7 @@ def setPane( paneType ):
 
 
 def createOutput( parentPanelLayout ):
-    logger.info(defStart("Creating output"))
+    logger.debug(defStart("Creating output"))
     logger.debug(var1("parentPanelLayout",parentPanelLayout))
 
     output = c.cmdScrollFieldReporter(  parent = parentPanelLayout,
@@ -535,8 +535,8 @@ def createOutput( parentPanelLayout ):
     createPaneMenu( output )
     createDebugMenu( output )
     createOutputMenu( output )
-    logger.info(defEnd("Created output!"))
-    logger.info("")
+    logger.debug(defEnd("Created output!"))
+    logger.debug("")
     return output
 
 
@@ -547,7 +547,7 @@ def createInput( parentUI, activeTabIndex=1 ):
     global currentInputTabs
     global InputBuffersPath
 
-    logger.info(defStart("Creating input"))
+    logger.debug(defStart("Creating input"))
     logger.debug(var1("parentUI",parentUI))
 
     inputLayout = c.formLayout(parent = parentUI) # formLayout that will hold all the tabs and command line text field
@@ -562,13 +562,13 @@ def createInput( parentUI, activeTabIndex=1 ):
     #==========================================================================================================================
     if c.optionVar(exists="JSE_input_tabLangs"): # Has JSE been used before? (It would have stored this variable)
         # (YES)
-        logger.info("Previous JSE existed, loading previous setting from optionVars")
+        logger.debug("Previous JSE existed, loading previous setting from optionVars")
 
         syncGlobals("retrieve")
 
     else: # (NO)
-        logger.info("No previous JSE optionVars found, must be fresh run of JSE eh?!")
-        logger.info("Hijacking settings and contents from Maya's script editor...")
+        logger.debug("No previous JSE optionVars found, must be fresh run of JSE eh?!")
+        logger.debug("Hijacking settings and contents from Maya's script editor...")
 
         if melEval("$workaroundToGetVariables = $gCommandExecuterType"): # What about Maya's own script editor, was it used?
             # (YES) Retrieve existing tabs' languages from the latest Maya script editor state
@@ -700,8 +700,8 @@ def createInput( parentUI, activeTabIndex=1 ):
                  # Snap the bottom of the tabLayout to the top of cmdLine
 
     createDebugMenu(inputTabsLay)
-    logger.info(defEnd("Created input"))
-    logger.info("")
+    logger.debug(defEnd("Created input"))
+    logger.debug("")
 
     return inputLayout
 
@@ -827,7 +827,7 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation, exprDic={}):
     '''
         If there is no text then load from file
     '''
-    logger.info(defStart("Making input tab"))
+    logger.debug(defStart("Making input tab"))
     logger.debug(var1(    "tabUsage",tabUsage))
     logger.debug(var1(  "pTabLayout",pTabLayout))
     logger.debug(var1(    "tabLabel",tabLabel))
@@ -934,7 +934,7 @@ def makeInputTab(tabUsage, pTabLayout, tabLabel, fileLocation, exprDic={}):
 
 
 
-    logger.info(defEnd("Made input tab"))
+    logger.debug(defEnd("Made input tab"))
     return inputField
 
 
@@ -954,6 +954,8 @@ def createInputMenu( ctrl ):
 
     c.setParent("..", menu=True)
     c.menuItem(  label="---Input Menu (Shift)---", enable=False)
+    c.menuItem(  label="Close this tab", radialPosition="N",
+                    command="" )
     c.menuItem(  label="", command="")
 
     logger.debug(defEnd("Created Input Menu"))
@@ -1087,12 +1089,18 @@ def outputPaneMethods(ctrl, method, *arg):
 
     if "snapshot" in method:
         newSnapshotFileName = OutputSnapshotsPath+c.date(format="YYYY-MMm-DDd-hhhmmmss.txt")
-        logger.debug( var1("snapshot to file", newSnapshotFileName ))
+        logger.debug( var1("newSnapshotFileName", newSnapshotFileName ))
 
         with open(newSnapshotFileName,"w") as snapshotFile:
             snapshotFile.write(c.cmdScrollFieldReporter(ctrl, q=1, text=1))
-        c.cmdScrollFieldReporter(ctrl, e=1, clear=1)
 
+        if "Wipe" in method:
+            c.cmdScrollFieldReporter(ctrl, e=1, clear=1)
+        logger.info("Snapshot saved to: %s",newSnapshotFileName)
+        
+        '''
+        Currently we only permit a maximum of 20 snapshots, additional ones are deleted
+        '''
         snapshotList = c.getFileList(folder=OutputSnapshotsPath, filespec='*' )
         logger.debug( var1("new snapshotList", snapshotList ))
         for i in snapshotList[20:]:
@@ -1111,6 +1119,18 @@ def createOutputMenu( ctrl ):
     logger.debug(var1("ctrl",ctrl))
 
     c.popupMenu( parent=ctrl , markingMenu=True) # markingMenu = Enable pie style menu
+    c.menuItem(  label="Snapshot then Wipe", radialPosition="N",
+                    command="JSE.outputPaneMethods('"+ctrl+"','snapshotWipe')" )
+    c.menuItem(  label="Wipe", radialPosition="E",
+                    command="JSE.outputPaneMethods('"+ctrl+"','Wipe')" )
+    c.menuItem(  label="Snapshot", radialPosition="W",
+                    command="JSE.outputPaneMethods('"+ctrl+"','snapshot')" )
+
+    c.menuItem(  label="---Output Menu---", enable=False)
+    c.menuItem(  label="", command="")
+
+
+    c.popupMenu( parent=ctrl , shiftModifier=True, markingMenu=True) # markingMenu = Enable pie style menu
     c.menuItem(  label="Snapshot then Wipe", radialPosition="N",
                     command="JSE.outputPaneMethods('"+ctrl+"','snapshotWipe')" )
     c.menuItem(  label="Wipe", radialPosition="E",
@@ -1301,7 +1321,7 @@ def saveInputTabs(tabIndex=[],parentTabLay="",parentTabLayChildArray=[],saveAs=F
 
     '''
 
-    logger.info(defStart("Saving input tabs"))
+    logger.debug(defStart("Saving input tabs"))
 
     logger.debug(var1("InputBuffersPath",InputBuffersPath))
     logger.debug(var1("tabIndex",tabIndex))
@@ -1418,8 +1438,8 @@ def saveInputTabs(tabIndex=[],parentTabLay="",parentTabLayChildArray=[],saveAs=F
         c.cmdScrollFieldExecuter(currentInputTabs[i], e=1, select=[0,0] )
 
     syncGlobals("store")
-    logger.info(defEnd("Saved input tabs"))
-    logger.info("")
+    logger.debug(defEnd("Saved input tabs"))
+    logger.debug("")
 
 
 def saveCurrentSettings():
@@ -1464,35 +1484,36 @@ def wipeOptionVars():
 ################################################      DebugRelated      ################################################
 
 def createDebugMenu( ctrl ):
-    logger.debug(defStart("Creating Debug Menu"))
-    logger.debug(var1("ctrl",ctrl))
+    if logger.getEffectiveLevel() == logging.DEBUG:
+        logger.debug(defStart("Creating Debug Menu"))
+        logger.debug(var1("ctrl",ctrl))
 
-    c.popupMenu( parent=ctrl , markingMenu=True,
-                 shiftModifier=True, ctrlModifier=True, altModifier=True ) # markingMenu = Enable pie style menu
-    c.menuItem(  label="wipeOptionVars", radialPosition="E",
-                    command="JSE.wipeOptionVars()" )
-    c.menuItem(  label="refreshAllScematic", radialPosition="W",
-                    command="JSE.refreshAllScematic()" )
-    c.menuItem(  label="debugGlobals", radialPosition="S",
-                    command="JSE.debugGlobals()" )
-    c.menuItem(  label="Reload", radialPosition="N",
-                    command="reload(JSE)" )
+        c.popupMenu( parent=ctrl , markingMenu=True,
+                     shiftModifier=True, ctrlModifier=True, altModifier=True ) # markingMenu = Enable pie style menu
+        c.menuItem(  label="wipeOptionVars", radialPosition="E",
+                        command="JSE.wipeOptionVars()" )
+        c.menuItem(  label="refreshAllScematic", radialPosition="W",
+                        command="JSE.refreshAllScematic()" )
+        c.menuItem(  label="debugGlobals", radialPosition="S",
+                        command="JSE.debugGlobals()" )
+        c.menuItem(  label="Reload", radialPosition="N",
+                        command="reload(JSE)" )
 
-    c.menuItem(  label="Run in... [SetLevel]", enable=False)
-    c.menuItem(  label="Debug",  command="JSE.run(0,JSE.logging.DEBUG)")
-    c.menuItem(  optionBox=True, command="JSE.logger.setLevel(JSE.logging.DEBUG)")
-    c.menuItem(  label="Info",   command="JSE.run(0,JSE.logging.INFO)")
-    c.menuItem(  optionBox=True, command="JSE.logger.setLevel(JSE.logging.INFO)")
-    c.menuItem(  label="Error",  command="JSE.run(0,JSE.logging.ERROR)")
-    c.menuItem(  optionBox=True, command="JSE.logger.setLevel(JSE.logging.ERROR)")
+        c.menuItem(  label="Run in... [SetLevel]", enable=False)
+        c.menuItem(  label="Debug",  command="JSE.run(0,JSE.logging.DEBUG)")
+        c.menuItem(  optionBox=True, command="JSE.logger.setLevel(JSE.logging.DEBUG)")
+        c.menuItem(  label="Info",   command="JSE.run(0,JSE.logging.INFO)")
+        c.menuItem(  optionBox=True, command="JSE.logger.setLevel(JSE.logging.INFO)")
+        c.menuItem(  label="Error",  command="JSE.run(0,JSE.logging.ERROR)")
+        c.menuItem(  optionBox=True, command="JSE.logger.setLevel(JSE.logging.ERROR)")
 
 
-    logger.debug(defEnd("Created Debug Menu"))
-    logger.debug("")
+        logger.debug(defEnd("Created Debug Menu"))
+        logger.debug("")
 
 
 def layoutJSE():
-    logger.info(defStart("Layout JSE"))
+    logger.debug(defStart("Layout JSE"))
     def recursiveLayoutTraverse(JSELayout, layerNum):
         layoutChildArray = c.layout(JSELayout, q=1, ca=1)
         if layoutChildArray:
@@ -1509,8 +1530,8 @@ def layoutJSE():
 
     recursiveLayoutTraverse(layout, 0)
 
-    logger.info(defEnd("Layout JSE"))
-    logger.info("")
+    logger.debug(defEnd("Layout JSE"))
+    logger.debug("")
     ''' EXAMPLE OUTPUT
     paneLayout38
     cmdScrollFieldReporter18
@@ -1607,7 +1628,7 @@ def debugGlobals():
 ##################################################################################################################
 
 
-def run(dockable, loggingLevel=logging.ERROR):
+def run(dockable=False, loggingLevel=logging.INFO):
     global currentInputTabLayouts
     global currentAllSchematic
     global currentPaneScematic
@@ -1618,8 +1639,8 @@ def run(dockable, loggingLevel=logging.ERROR):
     # Logger levels: CRITICAL ERROR WARNING INFO DEBUG NOTSET
     logger.setLevel(loggingLevel)
 
-    logger.info("")
-    logger.info(head1("JSE called"))
+    logger.debug("")
+    logger.debug(head1("JSE called"))
     debugGlobals()
 
     #---- Setup ----
