@@ -63,6 +63,12 @@ import JSE
 JSE.wipeOptionVars()
 ```
 
+**WipeJSEfiles**:
+```python
+import JSE
+JSE.wipeJSEfiles()
+```
+
 **Reload JSE Module**:
 ```python
 reload(JSE)
@@ -82,7 +88,7 @@ reload(JSE)
 9. Rename it "Standard Windowed" (`Popup Menu Items Tab` / `Menu Items` / `Rename`)
 10. Change language to `Python` (`Popup Menu Items Tab` / `Menu Item Command` / `Language` / `Python`)
 11. Replace the script in the script section with that of the **Debug mode for windowed** script (above)
-12. Repeat from and including _setp 8_ to and including _step 11_ for the **Debug mode for dockable** and **WipeOptionVars** and **Reload JSE Module** scripts (all can be found above)
+12. Repeat from and including _setp 8_ to and including _step 11_ for the **Debug mode for dockable**, **WipeOptionVars**, **WipeJSEfiles** and **Reload JSE Module** scripts (all can be found above)
 
 Usage (for shelf icon):
 * `Single click` for standard windowed script editor
@@ -103,6 +109,6 @@ Usage (for shelf icon):
 7. `Assign New Hotkey` / Set your own keybaord shortcuts e.g. `F7`, the press `Assingn`
 --* Press the `Query` button to see if the keyboard shortcut is already taken
 --* Press the `Current Hotkeys`/`List All` button to see a list of unassigned buttons on the right hand side of the `List Hotkeys` Window
-8. Repeat from and including _setp 2_ to and including _step 7_ for the **Dockable version**, **Debug mode for windowed**, **Debug mode for dockable** and **WipeOptionVars** and **Reload JSE Module** scripts (all can be found above)
+8. Repeat from and including _setp 2_ to and including _step 7_ for the **Dockable version**, **Debug mode for windowed**, **Debug mode for dockable**, **WipeOptionVars**, **WipeJSEfiles** and **Reload JSE Module** scripts (all can be found above)
 
 Usage: Press the keyboard shortcut you assigned!

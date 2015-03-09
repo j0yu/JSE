@@ -578,14 +578,14 @@ def createInput( parentUI, activeTabIndex=1 ):
             currentInputTabLabels = melEval("$workaroundToGetVariables = $gCommandExecuterName")
             cmdExecutersList = melEval("$workaroundToGetVariables = $gCommandExecuter")
             for i in xrange( len(cmdExecutersList) ):
+                logger.debug(head2("appending"))
                 if currentInputTabType[i] == "python": fileExt = "py"
                 else: fileExt = "mel"
                 logger.debug(var1("cmdExecutersList[i]",cmdExecutersList[i]) )
                 logger.debug(var1("saving to","JSE-Tab-"+str(i)+"-"+currentInputTabLabels[i]+"."+fileExt) )
-                logger.debug("\n"+c.cmdScrollFieldExecuter(cmdExecutersList[i], q=1, text=1) )
+                logger.debug("cmdExecutersList[i] text\n"+c.cmdScrollFieldExecuter(cmdExecutersList[i], q=1, text=1) )
                 c.cmdScrollFieldExecuter( cmdExecutersList[i], e=1, storeContents=InputBuffersPath+"JSE-Tab-"+str(i)+"-"+str(currentInputTabLabels[i])+"."+str(fileExt) )
                 c.cmdScrollFieldExecuter( cmdExecutersList[i], e=1, select=[0,0] )
-                logger.debug(head2("appending"))
 
             # It definitely will not have file locations, so we create one
             for i in range( len(currentInputTabType) ):
@@ -1474,11 +1474,37 @@ def syncGlobals(direction):
 
 
 def wipeOptionVars():
+    logger.debug(defStart("Wiping JSE Option Vars"))
     for i in c.optionVar(list=True):
         if i[0:4] == "JSE_":
             c.optionVar(remove=i)
-    c.confirmDialog(icon="warning", messageAlign="center",
-                message="JSE optionVars wiped! Reactor core highly unstable...\nCLOSE IT DOWN AND GET OUTTA THERE!")
+            logger.debug(var1("removed",i))
+    logger.debug(defEnd("Option Vars Wiped"))
+
+
+def wipeJSEfiles():
+    global InputBuffersPath
+    global OutputSnapshotsPath
+    logger.debug(defStart("Wiping JSE Files"))
+    logger.debug(var1("InputBuffersPath",InputBuffersPath))
+    logger.debug(var1("OutputSnapshotsPath",OutputSnapshotsPath))
+    try:
+        for inputBufferFile in c.getFileList(folder=InputBuffersPath):
+            logger.debug(var1("InputBuffersPath+file",InputBuffersPath+inputBufferFile))  
+            if match("^JSE-Tab-[0-9]+-.+\.(py|mel)$", inputBufferFile):   
+                c.sysFile(InputBuffersPath+inputBufferFile, delete=1)
+                logger.debug(var1("Deleted",inputBufferFile))    
+        
+        for outputSnapshotFile in c.getFileList(folder=OutputSnapshotsPath):
+            logger.debug(var1("OutputSnapshotsPathPath+file",OutputSnapshotsPath+outputSnapshotFile))
+            if match("^[0-9]{4}-[0-9]{2}m-[0-9]{2}d-[0-9]{2}h[0-9]{2}m[0-9]{2}.txt$", outputSnapshotFile): 
+                c.sysFile(OutputSnapshotsPath+outputSnapshotFile, delete=1)
+                logger.debug(var1("Deleted",outputSnapshotFile))   
+    except:
+        logger.error(head1("Unable to wipe files, try running JSE first"))
+        return
+    
+    logger.debug(defEnd("JSE Files Wiped"))
 
 
 ################################################      DebugRelated      ################################################
