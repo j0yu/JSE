@@ -7,6 +7,7 @@ Joe's Script Editor - Python based standalone script editor for Autodesk Maya us
 * Many features that are listed in menus are not functional yet
 * Saving file has some bugs
 * Opening file is still WIP
+* Many more...
 
 Installation
 ===
