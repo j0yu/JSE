@@ -32,7 +32,7 @@ JSE.run()
 ```
 
 ---
-I **highly suggest** you check out the wiki for more configuration options for a faster/more intuitive launch in the future
+I **highly suggest** you check out the **wiki links below** for more configuration options for a faster/more intuitive launch in the future
 
 * [Shelf Item](https://github.com/j0yu/JSE/wiki/Shelf-Item)
 * [Keyboard Shortcuts](https://github.com/j0yu/JSE/wiki/Keyboard-Shortcut)
