@@ -4,6 +4,9 @@ JSE
 Joe's Script Editor - Python based standalone script editor for Autodesk Maya using maya.cmds aiming to address issues with the default script editor and enhance functionality
 
 ###_Curent status: Unstable pre-alpha_
+* Many features that are listed in menus are not functional yet
+* Saving file has some bugs
+* Opening file is still WIP
 
 Installation
 ===
@@ -36,3 +39,14 @@ I **highly suggest** you check out the **wiki links below** for more configurati
 
 * [Shelf Item](https://github.com/j0yu/JSE/wiki/Shelf-Item)
 * [Keyboard Shortcuts](https://github.com/j0yu/JSE/wiki/Keyboard-Shortcut)
+
+Usage
+===
+
+The editor is completely right-mouse button, menu based at the moment:
+
+Hold...     | Menu Type                  | Example of actions that's found in there
+------------|----------------------------|------------------------------------------
+`Alt+RMB`   | Pane actions               | _Remove this pane_, _new split left_
+`Shift+RMB` | Pane type specific actions | (Input Pane) _Create Tab_
+`RMB`       | Control specific actions   | (Script Editor) _Execute Code_, (Expression Editor) _Update Expression_, (Output) _Snapshot then Wipe_,
