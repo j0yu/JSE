@@ -12,7 +12,7 @@ Joe's Script Editor - Python based standalone script editor for Autodesk Maya us
 Installation
 ===
 
-1. Download as zip (to the right! :arrow_right:)
+1. Download as zip (button to the top right!)
 
 2. Extract `JSE.py` from the downloaded zip and place into the folder (typically):
 
